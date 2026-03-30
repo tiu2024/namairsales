@@ -1,0 +1,159 @@
+<div class="form-card" id="sale-form-container">
+  <div class="form-card-header">
+    <h2>Yangi sotuv</h2>
+    <button type="button" class="btn btn-secondary"
+      onclick="document.getElementById('form-slot').innerHTML=''">
+      × Bekor qilish
+    </button>
+  </div>
+
+  <form
+    hx-post="{% url 'core:sale_add' %}"
+    hx-target="#sale-list-body"
+    hx-swap="afterbegin"
+    hx-on::after-request="if(event.detail.successful) document.getElementById('form-slot').innerHTML=''"
+  >
+    {% csrf_token %}
+
+    <div x-data="{ customerType: '{{ form.customer_type.value|default:'WALKIN' }}' }">
+      <div class="form-grid">
+
+        <!-- Sana -->
+        <div class="field {% if form.date.errors %}field--error{% endif %}">
+          <label for="{{ form.date.id_for_label }}">Sana</label>
+          {{ form.date }}
+          {% for error in form.date.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Yetkazib beruvchi -->
+        <div class="field {% if form.supplier.errors %}field--error{% endif %}">
+          <label for="{{ form.supplier.id_for_label }}">Yetkazib beruvchi</label>
+          {{ form.supplier }}
+          {% for error in form.supplier.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Mahsulot turi (full width segmented) -->
+        <div class="field full-width {% if form.product_type.errors %}field--error{% endif %}">
+          <label>Mahsulot turi</label>
+          <div class="radio-group">
+            {% for radio in form.product_type %}
+              <label style="display:flex;align-items:center;justify-content:center;flex:1;padding:8px 12px;font-size:13px;font-weight:500;cursor:pointer;border-right:1px solid var(--border);transition:background 0.15s,color 0.15s;"
+                :style="'{{ radio.data.value }}' === customerType || true ? '' : ''"
+              >
+                {{ radio.tag }}
+                <span style="margin-left:6px;">{{ radio.choice_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {% for error in form.product_type.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Yo'nalish -->
+        <div class="field full-width {% if form.destination.errors %}field--error{% endif %}">
+          <label for="{{ form.destination.id_for_label }}">Yo'nalish</label>
+          {{ form.destination }}
+          {% for error in form.destination.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Miqdor -->
+        <div class="field {% if form.quantity.errors %}field--error{% endif %}">
+          <label for="{{ form.quantity.id_for_label }}">Miqdor</label>
+          {{ form.quantity }}
+          {% for error in form.quantity.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Tannarx -->
+        <div class="field {% if form.acquired_price.errors or form.acquired_currency.errors %}field--error{% endif %}">
+          <label>Tannarx</label>
+          <div class="price-row">
+            {{ form.acquired_price }}
+            {{ form.acquired_currency }}
+          </div>
+          {% for error in form.acquired_price.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          {% for error in form.acquired_currency.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Sotish narxi -->
+        <div class="field {% if form.sold_price.errors or form.sold_currency.errors %}field--error{% endif %}">
+          <label>Sotish narxi</label>
+          <div class="price-row">
+            {{ form.sold_price }}
+            {{ form.sold_currency }}
+          </div>
+          {% for error in form.sold_price.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          {% for error in form.sold_currency.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Mijoz turi -->
+        <div class="field full-width {% if form.customer_type.errors %}field--error{% endif %}">
+          <label>Mijoz turi</label>
+          <div class="radio-group">
+            {% for radio in form.customer_type %}
+              <label
+                style="display:flex;align-items:center;justify-content:center;flex:1;padding:8px 12px;font-size:13px;font-weight:500;cursor:pointer;border-right:1px solid var(--border);transition:background 0.15s,color 0.15s;"
+                :style="customerType === '{{ radio.data.value }}' ? 'background:var(--navy);color:#fff;' : 'color:var(--text-muted);'"
+              >
+                <input type="radio" name="{{ form.customer_type.html_name }}" value="{{ radio.data.value }}"
+                  {% if radio.data.selected %}checked{% endif %}
+                  @change="customerType = $event.target.value"
+                  style="display:none;">
+                <span>{{ radio.choice_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {% for error in form.customer_type.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Agent (shown when customerType === AGENT) -->
+        <div class="field full-width {% if form.agent.errors %}field--error{% endif %}"
+          x-show="customerType === 'AGENT'">
+          <label for="{{ form.agent.id_for_label }}">Agent</label>
+          <select name="{{ form.agent.html_name }}" id="{{ form.agent.id_for_label }}"
+            x-bind:disabled="customerType !== 'AGENT'">
+            <option value="">---------</option>
+            {% for val, label in form.agent.field.choices %}
+              {% if val %}
+                <option value="{{ val }}" {% if form.agent.value == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          {% for error in form.agent.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Walk-in fields (shown when customerType === WALKIN) -->
+        <div class="field {% if form.customer_name.errors %}field--error{% endif %}"
+          x-show="customerType === 'WALKIN'">
+          <label for="{{ form.customer_name.id_for_label }}">Mijoz ismi</label>
+          {{ form.customer_name }}
+          {% for error in form.customer_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.customer_passport.errors %}field--error{% endif %}"
+          x-show="customerType === 'WALKIN'">
+          <label for="{{ form.customer_passport.id_for_label }}">Pasport (ixtiyoriy)</label>
+          {{ form.customer_passport }}
+          {% for error in form.customer_passport.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Disabled hidden inputs to prevent stale values being submitted -->
+        <input type="hidden" name="_customer_type_marker" x-bind:value="customerType" style="display:none;">
+
+        <!-- Izoh -->
+        <div class="field full-width {% if form.commentary.errors %}field--error{% endif %}">
+          <label for="{{ form.commentary.id_for_label }}">Izoh (ixtiyoriy)</label>
+          {{ form.commentary }}
+          {% for error in form.commentary.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+      </div><!-- /form-grid -->
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Saqlash</button>
+        <button type="button" class="btn btn-secondary"
+          onclick="document.getElementById('form-slot').innerHTML=''">
+          Bekor qilish
+        </button>
+      </div>
+    </div><!-- /x-data -->
+  </form>
+</div>

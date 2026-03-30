@@ -1,0 +1,46 @@
+{% extends "core/base.html" %}
+
+{% block title %}Sotuvlarim — NamAirSales{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Sotuvlarim</h1>
+  <button
+    class="btn btn-primary"
+    hx-get="{% url 'core:sale_form' %}"
+    hx-target="#form-slot"
+    hx-swap="innerHTML"
+  >
+    + Yangi sotuv
+  </button>
+</div>
+
+<div id="form-slot"></div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Sana</th>
+        <th>Yetkazib beruvchi</th>
+        <th>Turi</th>
+        <th>Yo'nalish</th>
+        <th>Miqdor</th>
+        <th>Tannarx</th>
+        <th>Sotish narxi</th>
+        <th>Mijoz</th>
+        <th>Bog'langan</th>
+      </tr>
+    </thead>
+    <tbody id="sale-list-body">
+      {% for sale in sales %}
+        {% include "core/partials/sale_row.html" %}
+      {% empty %}
+        <tr id="empty-row">
+          <td colspan="9" class="empty-state">Hozircha sotuvlar yo'q.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

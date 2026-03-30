@@ -1,0 +1,23 @@
+<tr class="sale-row">
+  <td>{{ sale.date|date:"d.m.Y" }}</td>
+  <td>{{ sale.supplier.name }}</td>
+  <td>{{ sale.get_product_type_display }}</td>
+  <td>{{ sale.destination }}</td>
+  <td class="mono">{{ sale.quantity }}</td>
+  <td class="mono">{{ sale.acquired_price }} {{ sale.acquired_currency }}</td>
+  <td class="mono">{{ sale.sold_price }} {{ sale.sold_currency }}</td>
+  <td>
+    {% if sale.customer_type == "AGENT" %}
+      {{ sale.agent.name }}
+    {% else %}
+      {{ sale.customer_name }}
+    {% endif %}
+  </td>
+  <td>
+    {% if sale.financial_account %}
+      <span class="badge badge--linked">Bog'langan</span>
+    {% else %}
+      <span class="badge badge--pending">Kutilmoqda</span>
+    {% endif %}
+  </td>
+</tr>
