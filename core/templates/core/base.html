@@ -2,6 +2,7 @@
 <html lang="uz">
 <head>
   <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}NamAirSales{% endblock %}</title>
 
@@ -18,21 +19,24 @@
 
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script>htmx.config.settleDelay = 350;</script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy: #1B3A6B;
-      --navy-light: #254d8f;
+      --navy: #0284C7;
+      --navy-light: #0369A1;
       --emerald: #059669;
       --crimson: #DC2626;
-      --bg: #F8FAFC;
+      --bg: #F0F4F8;
       --surface: #FFFFFF;
-      --border: #E2E8F0;
-      --text: #1E293B;
+      --border: #D1DCE8;
+      --text: #0F172A;
       --text-muted: #64748B;
       --sidebar-w: 240px;
+      --seg-active: var(--navy);
+      --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
     }
 
     body {
@@ -47,7 +51,7 @@
     /* ── Sidebar ── */
     .sidebar {
       width: var(--sidebar-w);
-      background: var(--navy);
+      background: #0F172A;
       color: #fff;
       display: flex;
       flex-direction: column;
@@ -134,8 +138,9 @@
       font-weight: 500;
       cursor: pointer;
       border: none;
-      transition: background 0.15s;
+      transition: background 0.15s, transform 0.1s;
     }
+    .btn:active { transform: scale(0.97); }
 
     .btn-primary {
       background: var(--navy);
@@ -207,6 +212,12 @@
     .field textarea:focus {
       outline: none;
       border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(27, 58, 107, 0.12);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--navy);
+      outline-offset: 2px;
     }
 
     .field--error input,
@@ -309,7 +320,7 @@
     }
 
     thead {
-      background: #F1F5F9;
+      background: #EFF6FF;
     }
 
     th {
@@ -331,7 +342,7 @@
     }
 
     tr:last-child td { border-bottom: none; }
-    tbody tr:hover { background: #F8FAFC; }
+    tbody tr:hover { background: #DBEAFE; }
 
     .mono {
       font-family: 'JetBrains Mono', monospace;
@@ -368,8 +379,118 @@
       :root { --sidebar-w: 60px; }
       .sidebar-logo span,
       .sidebar-nav a span,
+      .sidebar-nav button span,
       .sidebar-footer { display: none; }
       .sidebar-nav a { justify-content: center; padding: 12px; }
+    }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--emerald);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      white-space: nowrap;
+    }
+
+    /* ── Theme toggle button ── */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      width: 100%;
+      color: rgba(255,255,255,0.75);
+      background: transparent;
+      border: none;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+    }
+    .theme-toggle:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .icon-sun { display: none; }
+    .icon-moon { display: block; }
+    [data-theme="dark"] .icon-sun { display: block; }
+    [data-theme="dark"] .icon-moon { display: none; }
+
+    /* ── Dark mode ── */
+    [data-theme="dark"] {
+      --navy: #38BDF8;
+      --navy-light: #7DD3FC;
+      --seg-active: #0284C7;
+      --emerald: #34D399;
+      --crimson: #F87171;
+      --bg: #020617;
+      --surface: #0C1628;
+      --border: #1E3352;
+      --text: #E2EAF4;
+      --text-muted: #7B95B4;
+    }
+    [data-theme="dark"] .sidebar { background: #010B19; }
+    [data-theme="dark"] .btn-primary { background: #0284C7; }
+    [data-theme="dark"] .btn-primary:hover { background: #0369A1; }
+    [data-theme="dark"] thead { background: #091628; }
+    [data-theme="dark"] tbody tr:hover { background: rgba(56, 189, 248, 0.06); }
+    [data-theme="dark"] .badge--linked { background: rgba(52, 211, 153, 0.15); }
+    [data-theme="dark"] .badge--pending { background: rgba(248, 113, 113, 0.15); }
+    [data-theme="dark"] .field input:focus,
+    [data-theme="dark"] .field select:focus,
+    [data-theme="dark"] .field textarea:focus {
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    }
+
+    /* ── Animations ── */
+    @keyframes slide-down {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes row-enter {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(14px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* Form card: animates on HTMX insertion */
+    .form-card { animation: slide-down 0.25s var(--ease-out) both; }
+
+    /* New table row: HTMX keeps htmx-added class for settleDelay ms */
+    tr.htmx-added td { animation: row-enter 0.3s var(--ease-out) both; }
+
+    /* Toast entrance */
+    .toast { animation: toast-in 0.25s var(--ease-out) both; }
+
+    /* Theme switch: smooth color bleed across the page */
+    body, .sidebar, .form-card, .table-wrapper, .main-content {
+      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    /* Accessibility: respect reduced-motion preference */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>
@@ -380,12 +501,25 @@
     </div>
     <nav class="sidebar-nav">
       <a href="{% url 'core:salesman_sales' %}" {% if request.resolver_match.url_name == 'salesman_sales' %}class="active"{% endif %}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         <span>Sotuvlarim</span>
       </a>
+      <button class="theme-toggle"
+        onclick="var t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);localStorage.setItem('theme',t);"
+        title="Mavzuni o'zgartirish">
+        <!-- Moon: shown in light mode → click to go dark -->
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <!-- Sun: shown in dark mode → click to go light -->
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span>Mavzu</span>
+      </button>
     </nav>
     <div class="sidebar-footer">
       {{ request.user.get_full_name|default:request.user.phone_number }}<br>
-      <a href="{% url 'accounts:logout' %}">Chiqish</a>
+      <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="background:none;border:none;padding:0;color:inherit;cursor:pointer;font:inherit;text-decoration:underline;">Chiqish</button>
+      </form>
     </div>
   </aside>
 
@@ -408,5 +542,13 @@
   </script>
 
   {% block extra_js %}{% endblock %}
+
+  <div class="toast-container"
+    x-data="{ toasts: [], show(msg) { const id = Date.now(); this.toasts.push({id, msg}); setTimeout(() => this.remove(id), 4000); }, remove(id) { this.toasts = this.toasts.filter(t => t.id !== id); } }"
+    @toast.window="show($event.detail)">
+    <template x-for="t in toasts" :key="t.id">
+      <div class="toast" x-text="t.msg" x-transition.opacity.duration.150ms></div>
+    </template>
+  </div>
 </body>
 </html>

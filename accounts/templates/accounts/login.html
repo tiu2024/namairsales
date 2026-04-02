@@ -2,6 +2,7 @@
 <html lang="uz">
 <head>
   <meta charset="UTF-8">
+  <script>(function(){var t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kirish — NamAirSales</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,15 +12,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy: #1B3A6B;
-      --navy-light: #254d8f;
+      --navy: #0284C7;
+      --navy-light: #0369A1;
       --crimson: #DC2626;
-      --bg: #F8FAFC;
+      --bg: #F0F4F8;
       --surface: #FFFFFF;
-      --border: #E2E8F0;
-      --text: #1E293B;
+      --border: #D1DCE8;
+      --text: #0F172A;
       --text-muted: #64748B;
     }
+    .login-logo-mark { background: #0F172A; }
 
     body {
       font-family: 'Inter', sans-serif;
@@ -158,6 +160,29 @@
 
     .btn-login:hover { background: var(--navy-light); }
     .btn-login:active { background: #152e55; }
+
+    [data-theme="dark"] {
+      --navy: #38BDF8;
+      --navy-light: #7DD3FC;
+      --crimson: #F87171;
+      --bg: #020617;
+      --surface: #0C1628;
+      --border: #1E3352;
+      --text: #E2EAF4;
+      --text-muted: #7B95B4;
+    }
+    [data-theme="dark"] .login-logo-mark { background: #010B19; }
+    [data-theme="dark"] .btn-login { background: #0284C7; }
+    [data-theme="dark"] .btn-login:hover { background: #0369A1; }
+    [data-theme="dark"] .btn-login:active { background: #025E8C; }
+    [data-theme="dark"] .login-card { box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+    [data-theme="dark"] .error-msg {
+      background: rgba(220, 38, 38, 0.12);
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+    [data-theme="dark"] .field input:focus {
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
   </style>
 </head>
 <body>

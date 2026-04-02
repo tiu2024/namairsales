@@ -11,11 +11,11 @@
     hx-post="{% url 'core:sale_add' %}"
     hx-target="#sale-list-body"
     hx-swap="afterbegin"
-    hx-on::after-request="if(event.detail.successful) document.getElementById('form-slot').innerHTML=''"
+    hx-on::after-request="if(event.detail.successful){ document.getElementById('form-slot').innerHTML=''; window.dispatchEvent(new CustomEvent('toast',{detail:'Sotuv saqlandi!'})); }"
   >
     {% csrf_token %}
 
-    <div x-data="{ customerType: '{{ form.customer_type.value|default:'WALKIN' }}' }">
+    <div x-data="{ customerType: '{{ form.customer_type.value|default:'WALKIN' }}', productType: '{{ form.product_type.value|default:'TICKET' }}' }">
       <div class="form-grid">
 
         <!-- Sana -->
@@ -37,11 +37,15 @@
           <label>Mahsulot turi</label>
           <div class="radio-group">
             {% for radio in form.product_type %}
-              <label style="display:flex;align-items:center;justify-content:center;flex:1;padding:8px 12px;font-size:13px;font-weight:500;cursor:pointer;border-right:1px solid var(--border);transition:background 0.15s,color 0.15s;"
-                :style="'{{ radio.data.value }}' === customerType || true ? '' : ''"
+              <label
+                style="display:flex;align-items:center;justify-content:center;flex:1;padding:8px 12px;font-size:13px;font-weight:500;cursor:pointer;border-right:1px solid var(--border);transition:background 0.15s,color 0.15s;"
+                :style="productType === '{{ radio.data.value }}' ? 'background:var(--seg-active);color:#fff;' : 'color:var(--text-muted);'"
               >
-                {{ radio.tag }}
-                <span style="margin-left:6px;">{{ radio.choice_label }}</span>
+                <input type="radio" name="{{ form.product_type.html_name }}" value="{{ radio.data.value }}"
+                  {% if radio.data.selected %}checked{% endif %}
+                  @change="productType = $event.target.value"
+                  style="display:none;">
+                <span>{{ radio.choice_label }}</span>
               </label>
             {% endfor %}
           </div>
@@ -91,7 +95,7 @@
             {% for radio in form.customer_type %}
               <label
                 style="display:flex;align-items:center;justify-content:center;flex:1;padding:8px 12px;font-size:13px;font-weight:500;cursor:pointer;border-right:1px solid var(--border);transition:background 0.15s,color 0.15s;"
-                :style="customerType === '{{ radio.data.value }}' ? 'background:var(--navy);color:#fff;' : 'color:var(--text-muted);'"
+                :style="customerType === '{{ radio.data.value }}' ? 'background:var(--seg-active);color:#fff;' : 'color:var(--text-muted);'"
               >
                 <input type="radio" name="{{ form.customer_type.html_name }}" value="{{ radio.data.value }}"
                   {% if radio.data.selected %}checked{% endif %}
@@ -106,7 +110,7 @@
 
         <!-- Agent (shown when customerType === AGENT) -->
         <div class="field full-width {% if form.agent.errors %}field--error{% endif %}"
-          x-show="customerType === 'AGENT'">
+          x-show="customerType === 'AGENT'" x-transition.opacity.duration.150ms>
           <label for="{{ form.agent.id_for_label }}">Agent</label>
           <select name="{{ form.agent.html_name }}" id="{{ form.agent.id_for_label }}"
             x-bind:disabled="customerType !== 'AGENT'">
@@ -122,14 +126,14 @@
 
         <!-- Walk-in fields (shown when customerType === WALKIN) -->
         <div class="field {% if form.customer_name.errors %}field--error{% endif %}"
-          x-show="customerType === 'WALKIN'">
+          x-show="customerType === 'WALKIN'" x-transition.opacity.duration.150ms>
           <label for="{{ form.customer_name.id_for_label }}">Mijoz ismi</label>
           {{ form.customer_name }}
           {% for error in form.customer_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
         </div>
 
         <div class="field {% if form.customer_passport.errors %}field--error{% endif %}"
-          x-show="customerType === 'WALKIN'">
+          x-show="customerType === 'WALKIN'" x-transition.opacity.duration.150ms>
           <label for="{{ form.customer_passport.id_for_label }}">Pasport (ixtiyoriy)</label>
           {{ form.customer_passport }}
           {% for error in form.customer_passport.errors %}<span class="field-error">{{ error }}</span>{% endfor %}

@@ -164,6 +164,12 @@ class Sale(models.Model):
     def total_cost(self):
         return self.acquired_price * self.quantity
 
+    @property
+    def profit(self):
+        if self.acquired_currency == self.sold_currency:
+            return (self.sold_price - self.acquired_price) * self.quantity
+        return None
+
     def clean(self):
         from django.core.exceptions import ValidationError
 

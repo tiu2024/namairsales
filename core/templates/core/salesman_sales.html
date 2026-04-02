@@ -1,46 +1,573 @@
 {% extends "core/base.html" %}
+{% load core_filters %}
 
 {% block title %}Sotuvlarim — NamAirSales{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1>Sotuvlarim</h1>
-  <button
-    class="btn btn-primary"
-    hx-get="{% url 'core:sale_form' %}"
-    hx-target="#form-slot"
-    hx-swap="innerHTML"
-  >
-    + Yangi sotuv
-  </button>
-</div>
+<div
+  x-data="{ open: false, customerType: 'WALKIN', productType: 'TICKET' }"
+  @keydown.escape.window="open = false"
+  @inline-sale-saved.window="open = false; customerType = 'WALKIN'; productType = 'TICKET'"
+>
 
-<div id="form-slot"></div>
+  <div class="page-header">
+    <h1>Sotuvlarim</h1>
+    <button
+      class="btn btn-primary"
+      @click="open = true; customerType = 'WALKIN'; productType = 'TICKET'; $nextTick(() => { resetInlineRow(); initInlineFlatpickr(); })"
+    >
+      + Yangi sotuv
+    </button>
+  </div>
 
-<div class="table-wrapper">
-  <table>
-    <thead>
-      <tr>
-        <th>Sana</th>
-        <th>Yetkazib beruvchi</th>
-        <th>Turi</th>
-        <th>Yo'nalish</th>
-        <th>Miqdor</th>
-        <th>Tannarx</th>
-        <th>Sotish narxi</th>
-        <th>Mijoz</th>
-        <th>Bog'langan</th>
-      </tr>
-    </thead>
-    <tbody id="sale-list-body">
-      {% for sale in sales %}
-        {% include "core/partials/sale_row.html" %}
-      {% empty %}
-        <tr id="empty-row">
-          <td colspan="9" class="empty-state">Hozircha sotuvlar yo'q.</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <form method="get" class="filter-bar">
+    <div class="filter-fields">
+      <div class="filter-field">
+        <label for="f-date-from">Dan</label>
+        <input type="text" id="f-date-from" name="date_from"
+          data-flatpickr-filter placeholder="KK.OO.YYYY"
+          value="{{ filter_date_from }}" autocomplete="off">
+      </div>
+      <div class="filter-field">
+        <label for="f-date-to">Gacha</label>
+        <input type="text" id="f-date-to" name="date_to"
+          data-flatpickr-filter placeholder="KK.OO.YYYY"
+          value="{{ filter_date_to }}" autocomplete="off">
+      </div>
+      <div class="filter-field">
+        <label for="f-currency">Valyuta</label>
+        <select id="f-currency" name="currency">
+          <option value="">Barchasi</option>
+          <option value="UZS" {% if filter_currency == "UZS" %}selected{% endif %}>So'm</option>
+          <option value="USD" {% if filter_currency == "USD" %}selected{% endif %}>Dollar</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="f-supplier">Yetkazib beruvchi</label>
+        <select id="f-supplier" name="supplier">
+          <option value="">Barchasi</option>
+          {% for s in all_suppliers %}
+            <option value="{{ s.pk }}" {% if filter_supplier_id == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="f-agent">Agent</label>
+        <select id="f-agent" name="agent">
+          <option value="">Barchasi</option>
+          {% for a in all_agents %}
+            <option value="{{ a.pk }}" {% if filter_agent_id == a.pk|stringformat:"s" %}selected{% endif %}>{{ a.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary" style="padding:7px 16px; font-size:13px;">Qidirish</button>
+      {% if filter_query %}
+        <a href="?" class="btn btn-secondary" style="padding:7px 16px; font-size:13px;">Tozalash</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <form id="inline-sale-form"
+    hx-post="{% url 'core:sale_add' %}"
+    hx-target="#sale-list-body"
+    hx-swap="afterbegin"
+    hx-on::after-request="handleInlineResult(event)">
+    {% csrf_token %}
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Sana</th>
+            <th>Yetkazib beruvchi</th>
+            <th>Turi</th>
+            <th>Yo'nalish</th>
+            <th>Miqdor</th>
+            <th style="min-width:190px;">Tannarx</th>
+            <th style="min-width:190px;">Sotish narxi</th>
+            <th>Mijoz</th>
+            <th>Foyda</th>
+          </tr>
+        </thead>
+
+        <!-- Inline input rows (separate tbody so afterbegin on #sale-list-body stays clean) -->
+        <tbody id="inline-container">
+          <tr id="inline-input-row" x-show="open" style="display:none;">
+
+            <!-- 1. Sana -->
+            <td class="inline-cell">
+              <input type="text" name="date"
+                data-flatpickr-inline placeholder="KK.OO.YYYY"
+                class="cell-input" autocomplete="off">
+            </td>
+
+            <!-- 2. Yetkazib beruvchi -->
+            <td class="inline-cell">
+              <select name="supplier" class="cell-input">
+                <option value="">—</option>
+                {% for val, label in form.supplier.field.choices %}
+                  {% if val %}<option value="{{ val }}">{{ label }}</option>{% endif %}
+                {% endfor %}
+              </select>
+            </td>
+
+            <!-- 3. Turi -->
+            <td class="inline-cell">
+              <select name="product_type" class="cell-input"
+                @change="productType = $event.target.value">
+                {% for val, label in form.product_type.field.choices %}
+                  <option value="{{ val }}" {% if val == 'TICKET' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </td>
+
+            <!-- 4. Yo'nalish -->
+            <td class="inline-cell">
+              <input type="text" name="destination" class="cell-input">
+            </td>
+
+            <!-- 5. Miqdor -->
+            <td class="inline-cell">
+              <input type="number" name="quantity" min="1" value="1"
+                class="cell-input mono" style="width:64px;">
+            </td>
+
+            <!-- 6. Tannarx -->
+            <td class="inline-cell">
+              <div class="cell-price">
+                <input type="number" name="acquired_price" step="0.01"
+                  class="cell-input mono" placeholder="0">
+                <select name="acquired_currency" class="cell-input cell-currency">
+                  {% for val, label in form.acquired_currency.field.choices %}
+                    <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </td>
+
+            <!-- 7. Sotish narxi -->
+            <td class="inline-cell">
+              <div class="cell-price">
+                <input type="number" name="sold_price" step="0.01"
+                  class="cell-input mono" placeholder="0">
+                <select name="sold_currency" class="cell-input cell-currency">
+                  {% for val, label in form.sold_currency.field.choices %}
+                    <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </td>
+
+            <!-- 8. Mijoz -->
+            <td class="inline-cell">
+              <select name="customer_type" class="cell-input"
+                @change="customerType = $event.target.value" style="margin-bottom:4px;">
+                {% for val, label in form.customer_type.field.choices %}
+                  <option value="{{ val }}" {% if val == 'WALKIN' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+
+              <!-- Agent (only when AGENT) -->
+              <select name="agent" class="cell-input"
+                x-show="customerType === 'AGENT'"
+                :disabled="customerType !== 'AGENT'"
+                style="display:none;">
+                <option value="">—</option>
+                {% for val, label in form.agent.field.choices %}
+                  {% if val %}<option value="{{ val }}">{{ label }}</option>{% endif %}
+                {% endfor %}
+              </select>
+
+              <!-- Walk-in name (only when WALKIN) -->
+              <input type="text" name="customer_name" class="cell-input"
+                placeholder="Ism"
+                x-show="customerType === 'WALKIN'"
+                :disabled="customerType !== 'WALKIN'"
+                style="margin-bottom:3px;">
+
+              <!-- Passport (only when WALKIN) -->
+              <input type="text" name="customer_passport" class="cell-input"
+                placeholder="Pasport (ixtiyoriy)"
+                x-show="customerType === 'WALKIN'"
+                :disabled="customerType !== 'WALKIN'">
+            </td>
+
+            <!-- 9. Actions -->
+            <td class="inline-cell" style="text-align:center; vertical-align:middle; white-space:nowrap;">
+              <span class="cell-hint">Ctrl+Enter — Saqlash<br>Esc — Bekor</span>
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px; align-items:center;">
+                <button type="button" class="btn btn-primary"
+                  style="font-size:12px; padding:4px 10px; width:100%;"
+                  onclick="submitInlineRow()">
+                  Saqlash
+                </button>
+                <button type="button" class="btn btn-secondary"
+                  style="font-size:12px; padding:4px 10px; width:100%;"
+                  @click="open = false">
+                  × Bekor
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Commentary sub-row: wide cell for commentary -->
+          <tr id="inline-comment-row" x-show="open" style="display:none;">
+            <td colspan="9" class="inline-cell" style="padding-top:0; border-top:1px dashed var(--border);">
+              <textarea name="commentary" class="cell-input" rows="2"
+                placeholder="Izoh (ixtiyoriy)"
+                style="width:100%; resize:vertical; min-height:48px;"></textarea>
+            </td>
+          </tr>
+        </tbody>
+
+        <!-- Sale data rows -->
+        <tbody id="sale-list-body">
+          {% for sale in sales %}
+            {% include "core/partials/sale_row.html" %}
+          {% empty %}
+            <tr id="empty-row">
+              <td colspan="9" class="empty-state">Hozircha sotuvlar yo'q.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+  </form>
+
+  {% if page_obj.has_other_pages %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if filter_query %}&{{ filter_query }}{% endif %}" class="page-btn">← Oldingi</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <span class="page-btn page-btn--active">{{ num }}</span>
+      {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+        <a href="?page={{ num }}{% if filter_query %}&{{ filter_query }}{% endif %}" class="page-btn">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if filter_query %}&{{ filter_query }}{% endif %}" class="page-btn">Keyingi →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="summary-card">
+    <div class="summary-group">
+      <span class="summary-label">Jami sotuv</span>
+      <div class="summary-values">
+        <span class="summary-val mono">{{ total_sold_uzs|uzs }} so'm</span>
+        <span class="summary-sep">·</span>
+        <span class="summary-val mono">{{ total_sold_usd|usd }} $</span>
+      </div>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-group">
+      <span class="summary-label">Foyda</span>
+      <div class="summary-values">
+        <span class="summary-val mono {% if profit_uzs >= 0 %}profit--pos{% else %}profit--neg{% endif %}">{{ profit_uzs|uzs }} so'm</span>
+        <span class="summary-sep">·</span>
+        <span class="summary-val mono {% if profit_usd >= 0 %}profit--pos{% else %}profit--neg{% endif %}">{{ profit_usd|usd }} $</span>
+      </div>
+    </div>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .filter-fields {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+  .filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 140px;
+  }
+  .filter-field label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .filter-field input,
+  .filter-field select {
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    transition: border-color 0.15s;
+  }
+  .filter-field input:focus,
+  .filter-field select:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+  }
+  .filter-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .cell-input {
+    width: 100%;
+    padding: 5px 7px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface);
+    transition: border-color 0.15s;
+  }
+  .cell-input:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+  }
+  .cell--error {
+    border-color: var(--crimson) !important;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15) !important;
+  }
+  .cell-price {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .cell-currency {
+    width: auto;
+    flex-shrink: 0;
+  }
+  .cell-price input[type="number"] {
+    flex: 1;
+    min-width: 110px;
+  }
+  .cell-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    display: block;
+  }
+  .inline-cell {
+    background: #EFF6FF;
+    vertical-align: top;
+    padding: 8px 10px !important;
+  }
+  [data-theme="dark"] .inline-cell {
+    background: rgba(56, 189, 248, 0.05);
+  }
+  .profit--pos  { color: var(--emerald); }
+  .profit--neg  { color: var(--crimson); }
+  .profit--mixed { font-size: 12px; line-height: 1.6; color: var(--text-muted); }
+  .profit--sold  { color: var(--text); }
+  .has-comment { cursor: pointer; }
+  .comment-indicator { color: var(--text-muted); margin-left: 5px; vertical-align: middle; }
+  .comment-row td.comment-cell {
+    background: #F8FAFC;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 8px 14px 10px 28px;
+    border-top: none;
+  }
+  [data-theme="dark"] .comment-row td.comment-cell { background: rgba(56,189,248,0.03); }
+  .comment-row:hover { background: inherit !important; }
+  /* Pagination */
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 12px;
+    justify-content: center;
+  }
+  .page-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: background 0.1s, color 0.1s;
+  }
+  .page-btn:hover { background: var(--border); color: var(--text); }
+  .page-btn--active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+    pointer-events: none;
+  }
+  /* Summary card */
+  .summary-card {
+    display: flex;
+    align-items: center;
+    margin-top: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 24px;
+  }
+  .summary-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+  }
+  .summary-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .summary-values {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .summary-val { font-size: 14px; }
+  .summary-sep { color: var(--border); font-size: 14px; }
+  .summary-divider {
+    width: 1px;
+    height: 32px;
+    background: var(--border);
+    margin: 0 24px;
+  }
+  /* Prevent hover highlight on the inline input rows */
+  #inline-input-row:hover,
+  #inline-comment-row:hover {
+    background: inherit !important;
+  }
+</style>
+
+<script>
+  // Filter date pickers — no defaultDate so they start empty
+  document.querySelectorAll("[data-flatpickr-filter]").forEach(function(el) {
+    if (!el._flatpickr) {
+      flatpickr(el, { dateFormat: "d.m.Y" });
+    }
+  });
+
+  function initInlineFlatpickr() {
+    var el = document.querySelector('#inline-input-row [data-flatpickr-inline]');
+    if (el && !el._flatpickr) {
+      flatpickr(el, { dateFormat: 'd.m.Y', defaultDate: 'today' });
+    }
+    if (el && el._flatpickr) {
+      el._flatpickr.setDate(new Date(), false);
+    }
+  }
+
+  function resetInlineRow() {
+    var allInputs = document.querySelectorAll(
+      '#inline-input-row input, #inline-input-row select, #inline-comment-row textarea'
+    );
+    allInputs.forEach(function(el) {
+      if (el.tagName === 'SELECT') {
+        if (el.name === 'customer_type') el.value = 'WALKIN';
+        else if (el.name === 'product_type') el.value = 'TICKET';
+        else if (el.name === 'acquired_currency' || el.name === 'sold_currency') el.value = 'UZS';
+        else el.selectedIndex = 0;
+      } else if (el.name === 'quantity') {
+        el.value = '1';
+      } else if (el.name === 'date') {
+        // flatpickr handles this via initInlineFlatpickr
+      } else {
+        el.value = '';
+      }
+      el.classList.remove('cell--error');
+    });
+  }
+
+  function submitInlineRow() {
+    var row = document.getElementById('inline-input-row');
+    var customerTypeEl = row.querySelector('[name="customer_type"]');
+    var customerType = customerTypeEl ? customerTypeEl.value : 'WALKIN';
+
+    var required = ['date', 'supplier', 'destination', 'quantity', 'acquired_price', 'sold_price'];
+    if (customerType === 'AGENT') required.push('agent');
+    if (customerType === 'WALKIN') required.push('customer_name');
+
+    var firstInvalid = null;
+    required.forEach(function(name) {
+      var el = row.querySelector('[name="' + name + '"]');
+      var empty = !el || !el.value.trim();
+      if (el) el.classList.toggle('cell--error', empty);
+      if (empty && !firstInvalid && el) firstInvalid = el;
+    });
+
+    if (firstInvalid) { firstInvalid.focus(); return; }
+    htmx.trigger(document.getElementById('inline-sale-form'), 'submit');
+  }
+
+  function handleInlineResult(event) {
+    if (event.detail.successful) {
+      document.getElementById('empty-row')?.remove();
+      window.dispatchEvent(new CustomEvent('inline-sale-saved'));
+      window.dispatchEvent(new CustomEvent('toast', { detail: 'Sotuv saqlandi!' }));
+    } else {
+      window.dispatchEvent(new CustomEvent('toast', { detail: 'Xatolik yuz berdi!' }));
+    }
+  }
+
+  // Commentary expand/collapse
+  document.getElementById('sale-list-body').addEventListener('click', function(e) {
+    var row = e.target.closest('tr.has-comment');
+    if (!row) return;
+    var pk = row.dataset.salePk;
+    var commentRow = document.getElementById('comment-row-' + pk);
+    if (commentRow) {
+      commentRow.style.display = commentRow.style.display === 'none' ? '' : 'none';
+    }
+  });
+
+  // Ctrl+Enter: submit when focus is inside the inline form rows
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+      var inputRow = document.getElementById('inline-input-row');
+      var commentRow = document.getElementById('inline-comment-row');
+      var active = document.activeElement;
+      if (inputRow && (inputRow.contains(active) || (commentRow && commentRow.contains(active)))) {
+        e.preventDefault();
+        submitInlineRow();
+      }
+    }
+  });
+
+  // Alt+N: open new sale row
+  document.addEventListener('keydown', function(e) {
+    if (!e.altKey || (e.key !== 'n' && e.key !== 'N')) return;
+    var tag = document.activeElement ? document.activeElement.tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    e.preventDefault();
+    var btn = document.querySelector('.page-header .btn-primary');
+    if (btn) btn.click();
+  });
+</script>
 {% endblock %}

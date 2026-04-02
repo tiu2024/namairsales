@@ -1,5 +1,7 @@
-<tr class="sale-row">
-  <td>{{ sale.date|date:"d.m.Y" }}</td>
+<tr class="sale-row{% if sale.commentary %} has-comment{% endif %}" data-sale-pk="{{ sale.pk }}">
+  <td>
+    {{ sale.date|date:"d.m.Y" }}{% if sale.commentary %}<svg class="comment-indicator" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{% endif %}
+  </td>
   <td>{{ sale.supplier.name }}</td>
   <td>{{ sale.get_product_type_display }}</td>
   <td>{{ sale.destination }}</td>
@@ -13,11 +15,21 @@
       {{ sale.customer_name }}
     {% endif %}
   </td>
-  <td>
-    {% if sale.financial_account %}
-      <span class="badge badge--linked">Bog'langan</span>
+  <td class="mono">
+    {% if sale.acquired_currency == sale.sold_currency %}
+      <span class="{% if sale.profit >= 0 %}profit--pos{% else %}profit--neg{% endif %}">
+        {{ sale.profit }} {{ sale.sold_currency }}
+      </span>
     {% else %}
-      <span class="badge badge--pending">Kutilmoqda</span>
+      <span class="profit--mixed">
+        {{ sale.acquired_price }} {{ sale.acquired_currency }}<br>
+        <span class="profit--sold">{{ sale.sold_price }} {{ sale.sold_currency }}</span>
+      </span>
     {% endif %}
   </td>
 </tr>
+{% if sale.commentary %}
+<tr class="comment-row" id="comment-row-{{ sale.pk }}" style="display:none;">
+  <td colspan="9" class="comment-cell">{{ sale.commentary }}</td>
+</tr>
+{% endif %}
