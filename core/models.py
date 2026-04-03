@@ -40,13 +40,6 @@ class Supplier(models.Model):
     def balance_uzs(self):
         from django.db.models import Sum
 
-        sales = (
-            self.sale_set.filter(acquired_currency=UZS).aggregate(
-                total=Sum("acquired_price")
-            )["total"]
-            or 0
-        )
-        # total_cost = acquired_price * quantity — need to account for quantity
         sales = self.sale_set.filter(acquired_currency=UZS)
         sales_total = sum(s.total_cost for s in sales)
         payments = (
@@ -55,7 +48,9 @@ class Supplier(models.Model):
             )["total"]
             or 0
         )
-        return self.initial_balance_uzs + sales_total - payments
+        # Positive result = we owe them; negative = they owe us.
+        # Negative initial_balance means we started owing them; positive means they owe us.
+        return sales_total - payments - self.initial_balance_uzs
 
     def balance_usd(self):
         from django.db.models import Sum
@@ -68,7 +63,7 @@ class Supplier(models.Model):
             )["total"]
             or 0
         )
-        return self.initial_balance_usd + sales_total - payments
+        return sales_total - payments - self.initial_balance_usd
 
 
 class Agent(models.Model):

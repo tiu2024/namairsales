@@ -19,3 +19,11 @@ def usd(value):
         return f"{float(value):,.2f}"
     except (ValueError, TypeError):
         return value
+
+
+@register.filter
+def absval(value):
+    try:
+        return abs(value)
+    except (TypeError, ValueError):
+        return value

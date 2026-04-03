@@ -2,7 +2,7 @@ from datetime import date
 
 from django import forms
 
-from .models import Sale
+from .models import Agent, AgentPayment, Sale, Supplier, SupplierPayment
 
 
 class SaleForm(forms.ModelForm):
@@ -52,4 +52,80 @@ class SaleForm(forms.ModelForm):
             self.add_error("agent", "Keluvchi mijoz uchun agent tanlanmasligi kerak.")
         if ct == Sale.WALKIN and not cleaned.get("customer_name"):
             self.add_error("customer_name", "Keluvchi mijoz uchun ism kiritilishi shart.")
+        return cleaned
+
+
+class AgentForm(forms.ModelForm):
+    class Meta:
+        model = Agent
+        fields = ['name', 'phone', 'note', 'initial_balance_uzs', 'initial_balance_usd']
+        widgets = {
+            'note': forms.Textarea(attrs={'rows': 2}),
+            'initial_balance_uzs': forms.NumberInput(attrs={'step': '0.01'}),
+            'initial_balance_usd': forms.NumberInput(attrs={'step': '0.01'}),
+        }
+
+
+class AgentPaymentForm(forms.ModelForm):
+    date = forms.DateField(
+        widget=forms.TextInput(attrs={"data-flatpickr": "", "placeholder": "KK.OO.YYYY"}),
+        input_formats=["%d.%m.%Y"],
+        initial=date.today,
+    )
+
+    class Meta:
+        model = AgentPayment
+        fields = ["amount", "currency", "financial_account", "date", "note"]
+        widgets = {
+            "amount": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+            "note": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        currency = cleaned.get("currency")
+        account = cleaned.get("financial_account")
+        if currency and account and account.currency != currency:
+            self.add_error(
+                "financial_account",
+                "Hisob valyutasi to'lov valyutasiga mos kelishi kerak.",
+            )
+        return cleaned
+
+
+class SupplierForm(forms.ModelForm):
+    class Meta:
+        model = Supplier
+        fields = ['name', 'phone', 'note', 'initial_balance_uzs', 'initial_balance_usd']
+        widgets = {
+            'note': forms.Textarea(attrs={'rows': 2}),
+            'initial_balance_uzs': forms.NumberInput(attrs={'step': '0.01'}),
+            'initial_balance_usd': forms.NumberInput(attrs={'step': '0.01'}),
+        }
+
+
+class SupplierPaymentForm(forms.ModelForm):
+    date = forms.DateField(
+        widget=forms.TextInput(attrs={"data-flatpickr": "", "placeholder": "KK.OO.YYYY"}),
+        input_formats=["%d.%m.%Y"],
+        initial=date.today,
+    )
+
+    class Meta:
+        model = SupplierPayment
+        fields = ["amount", "currency", "financial_account", "date", "note"]
+        widgets = {
+            "amount": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+            "note": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        currency = cleaned.get("currency")
+        account = cleaned.get("financial_account")
+        if currency and account and account.currency != currency:
+            self.add_error(
+                "financial_account",
+                "Hisob valyutasi to'lov valyutasiga mos kelishi kerak.",
+            )
         return cleaned

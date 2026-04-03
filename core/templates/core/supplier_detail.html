@@ -1,0 +1,280 @@
+{% extends "core/base.html" %}
+{% load core_filters %}
+
+{% block title %}{{ supplier.name }} — NamAirSales{% endblock %}
+
+{% block content %}
+<div x-data="{ payOpen: {{ payment_open|yesno:'true,false' }} }">
+
+  <div style="margin-bottom:16px;">
+    <a href="{% url 'core:supplier_list' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Yetkazib beruvchilar</a>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1>{{ supplier.name }}</h1>
+      {% if supplier.phone or supplier.note %}
+      <p style="margin-top:4px; font-size:13px; color:var(--text-muted);">
+        {% if supplier.phone %}{{ supplier.phone }}{% endif %}
+        {% if supplier.phone and supplier.note %} · {% endif %}
+        {% if supplier.note %}{{ supplier.note }}{% endif %}
+      </p>
+      {% endif %}
+    </div>
+    <button class="btn btn-primary" @click="payOpen = !payOpen">+ To'lov qilish</button>
+  </div>
+
+  <!-- Payment form -->
+  <div x-show="payOpen" x-transition.opacity.duration.150ms style="display:none; margin-bottom:20px;">
+    <div class="form-card">
+      <div class="form-card-header">
+        <h2>Yetkazib beruvchiga to'lov</h2>
+        <button type="button" class="btn btn-secondary" @click="payOpen = false">× Bekor</button>
+      </div>
+      <form method="post" action="{% url 'core:supplier_detail' supplier.pk %}">
+        {% csrf_token %}
+        <div class="form-grid">
+
+          <div class="field {% if payment_form.amount.errors %}field--error{% endif %}">
+            <label for="{{ payment_form.amount.id_for_label }}">Summa</label>
+            {{ payment_form.amount }}
+            {% for e in payment_form.amount.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if payment_form.currency.errors %}field--error{% endif %}">
+            <label for="{{ payment_form.currency.id_for_label }}">Valyuta</label>
+            {{ payment_form.currency }}
+            {% for e in payment_form.currency.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if payment_form.financial_account.errors %}field--error{% endif %}">
+            <label for="{{ payment_form.financial_account.id_for_label }}">Hisob</label>
+            {{ payment_form.financial_account }}
+            {% for e in payment_form.financial_account.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if payment_form.date.errors %}field--error{% endif %}">
+            <label for="{{ payment_form.date.id_for_label }}">Sana</label>
+            {{ payment_form.date }}
+            {% for e in payment_form.date.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field full-width {% if payment_form.note.errors %}field--error{% endif %}">
+            <label for="{{ payment_form.note.id_for_label }}">Izoh (ixtiyoriy)</label>
+            {{ payment_form.note }}
+            {% for e in payment_form.note.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Saqlash</button>
+          <button type="button" class="btn btn-secondary" @click="payOpen = false">Bekor qilish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Summary card -->
+  <div class="summary-card" style="margin-bottom:20px; flex-wrap:wrap; gap:12px 0;">
+
+    <!-- Current balance (or filtered cost) -->
+    <div class="summary-group">
+      <span class="summary-label">
+        {% if filter_type %}Xarajat (so'm){% else %}Qarz (so'm){% endif %}
+      </span>
+      <span class="summary-val mono"
+        style="font-size:18px; color:{% if balance_uzs > 0 %}var(--crimson){% else %}var(--emerald){% endif %};">
+        {{ balance_uzs|uzs }}
+      </span>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-group">
+      <span class="summary-label">
+        {% if filter_type %}Xarajat ($){% else %}Qarz ($){% endif %}
+      </span>
+      <span class="summary-val mono"
+        style="font-size:18px; color:{% if balance_usd > 0 %}var(--crimson){% else %}var(--emerald){% endif %};">
+        {{ balance_usd|usd }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Date filter + product type filter -->
+  <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+    <form method="get" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      {% if filter_type %}<input type="hidden" name="type" value="{{ filter_type }}">{% endif %}
+      <input type="text" name="date_from" value="{{ date_from_str }}"
+        data-flatpickr placeholder="Dan (KK.OO.YYYY)"
+        style="width:140px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; color:var(--text); background:var(--surface);">
+      <input type="text" name="date_to" value="{{ date_to_str }}"
+        data-flatpickr placeholder="Gacha (KK.OO.YYYY)"
+        style="width:140px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; color:var(--text); background:var(--surface);">
+      <button type="submit" class="btn btn-secondary" style="font-size:13px; padding:6px 14px;">Filtrlash</button>
+      {% if date_from_str or date_to_str %}
+        <a href="?type={{ filter_type }}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">× Tozalash</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="type-filter" style="margin-bottom:16px;">
+    <a href="?type=&date_from={{ date_from_str }}&date_to={{ date_to_str }}" class="type-btn {% if not filter_type %}type-btn--active{% endif %}">Barchasi</a>
+    <a href="?type=TICKET&date_from={{ date_from_str }}&date_to={{ date_to_str }}" class="type-btn {% if filter_type == 'TICKET' %}type-btn--active{% endif %}">Aviabilet</a>
+    <a href="?type=UMRA&date_from={{ date_from_str }}&date_to={{ date_to_str }}"   class="type-btn {% if filter_type == 'UMRA'   %}type-btn--active{% endif %}">Umra</a>
+    <a href="?type=TOUR&date_from={{ date_from_str }}&date_to={{ date_to_str }}"   class="type-btn {% if filter_type == 'TOUR'   %}type-btn--active{% endif %}">Turi</a>
+  </div>
+
+  <!-- Acquisitions + payments table -->
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Sana</th>
+          <th>Turi</th>
+          <th>Yo'nalish</th>
+          <th style="text-align:right;">Miqdor</th>
+          <th style="text-align:right;">Tannarx (so'm)</th>
+          <th style="text-align:right;">Tannarx ($)</th>
+          <th>Sotuvchi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td colspan="4" style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:12px;">Boshlang'ich qarz</td>
+          <td class="mono" style="text-align:right; font-size:12px; color:{% if supplier.initial_balance_uzs < 0 %}var(--crimson){% else %}var(--emerald){% endif %};">
+            {{ supplier.initial_balance_uzs|uzs }}
+          </td>
+          <td class="mono" style="text-align:right; font-size:12px; color:{% if supplier.initial_balance_usd < 0 %}var(--crimson){% else %}var(--emerald){% endif %};">
+            {{ supplier.initial_balance_usd|usd }}
+          </td>
+          <td></td>
+        </tr>
+        {% for row in page_obj %}
+        {% if row.kind == "sale" %}
+        <tr>
+          <td class="mono">{{ row.obj.date|date:"d.m.Y" }}</td>
+          <td>{{ row.obj.get_product_type_display }}</td>
+          <td>{{ row.obj.destination }}</td>
+          <td class="mono" style="text-align:right;">{{ row.obj.quantity }}</td>
+          <td class="mono" style="text-align:right; color:var(--crimson);">
+            {% if row.obj.acquired_currency == 'UZS' %}{{ row.obj.total_cost|uzs }}{% endif %}
+          </td>
+          <td class="mono" style="text-align:right; color:var(--crimson);">
+            {% if row.obj.acquired_currency == 'USD' %}{{ row.obj.total_cost|usd }}{% endif %}
+          </td>
+          <td style="color:var(--text-muted);">{{ row.obj.salesman.get_full_name|default:row.obj.salesman.phone_number }}</td>
+        </tr>
+        {% elif row.kind == "payment" %}
+        <tr>
+          <td class="mono">{{ row.obj.date|date:"d.m.Y" }}</td>
+          <td style="color:var(--text-muted); font-size:12px;">To'lov</td>
+          <td style="color:var(--text-muted); font-size:12px;">{{ row.obj.note|default:"—" }}</td>
+          <td></td>
+          <td class="mono" style="text-align:right; color:var(--emerald);">
+            {% if row.obj.currency == 'UZS' %}{{ row.obj.amount|uzs }}{% endif %}
+          </td>
+          <td class="mono" style="text-align:right; color:var(--emerald);">
+            {% if row.obj.currency == 'USD' %}{{ row.obj.amount|usd }}{% endif %}
+          </td>
+          <td style="color:var(--text-muted);">{{ row.obj.created_by.get_full_name|default:row.obj.created_by.phone_number }}</td>
+        </tr>
+        {% endif %}
+        {% empty %}
+        <tr>
+          <td colspan="7" class="empty-state">Bu yetkazib beruvchidan sotuvlar yo'q.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="border-top:2px solid var(--border); font-weight:600;">
+          <td colspan="4" style="font-size:13px; color:var(--text-muted);">Jami</td>
+          <td class="mono" style="text-align:right; color:{% if balance_uzs > 0 %}var(--crimson){% elif balance_uzs < 0 %}var(--emerald){% else %}var(--text-muted){% endif %};">
+            {{ balance_uzs|absval|uzs }}
+          </td>
+          <td class="mono" style="text-align:right; color:{% if balance_usd > 0 %}var(--crimson){% elif balance_usd < 0 %}var(--emerald){% else %}var(--text-muted){% endif %};">
+            {{ balance_usd|absval|usd }}
+          </td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?type={{ filter_type }}&date_from={{ date_from_str }}&date_to={{ date_to_str }}&page={{ page_obj.previous_page_number }}" class="page-btn">← Oldingi</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <span class="page-btn page-btn--active">{{ num }}</span>
+      {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+        <a href="?type={{ filter_type }}&date_from={{ date_from_str }}&date_to={{ date_to_str }}&page={{ num }}" class="page-btn">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <a href="?type={{ filter_type }}&date_from={{ date_from_str }}&date_to={{ date_to_str }}&page={{ page_obj.next_page_number }}" class="page-btn">Keyingi →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+
+</div>{# /x-data payOpen #}
+{% endblock %}
+
+{% block extra_js %}
+<style>
+  .type-filter {
+    display: flex;
+    gap: 4px;
+  }
+  .type-btn {
+    padding: 6px 14px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+  }
+  .type-btn:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+  .type-btn--active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    pointer-events: none;
+  }
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 12px;
+    justify-content: center;
+  }
+  .page-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: background 0.1s, color 0.1s;
+  }
+  .page-btn:hover { background: var(--border); color: var(--text); }
+  .page-btn--active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+    pointer-events: none;
+  }
+</style>
+{% endblock %}

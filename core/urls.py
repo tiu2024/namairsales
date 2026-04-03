@@ -9,4 +9,8 @@ urlpatterns = [
     path("sotuvlar/", views.salesman_sales, name="salesman_sales"),
     path("sotuvlar/yangi/", views.sale_form_get, name="sale_form"),
     path("sotuvlar/qoshish/", views.sale_add, name="sale_add"),
+    path("yetkazib-beruvchilar/", views.supplier_list, name="supplier_list"),
+    path("yetkazib-beruvchilar/<int:pk>/", views.supplier_detail, name="supplier_detail"),
+    path("agentlar/", views.agent_list, name="agent_list"),
+    path("agentlar/<int:pk>/", views.agent_detail, name="agent_detail"),
 ]

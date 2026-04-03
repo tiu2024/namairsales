@@ -196,8 +196,7 @@
 
             <!-- 9. Actions -->
             <td class="inline-cell" style="text-align:center; vertical-align:middle; white-space:nowrap;">
-              <span class="cell-hint">Ctrl+Enter — Saqlash<br>Esc — Bekor</span>
-              <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px; align-items:center;">
+              <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
                 <button type="button" class="btn btn-primary"
                   style="font-size:12px; padding:4px 10px; width:100%;"
                   onclick="submitInlineRow()">
@@ -366,13 +365,7 @@
     flex: 1;
     min-width: 110px;
   }
-  .cell-hint {
-    font-size: 11px;
-    color: var(--text-muted);
-    line-height: 1.5;
-    display: block;
-  }
-  .inline-cell {
+.inline-cell {
     background: #EFF6FF;
     vertical-align: top;
     padding: 8px 10px !important;
@@ -558,6 +551,19 @@
         submitInlineRow();
       }
     }
+  });
+
+  // Enter: advance focus inside inline form row
+  document.getElementById('inline-sale-form').addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' || e.ctrlKey) return;
+    var target = e.target;
+    if (target.tagName === 'TEXTAREA' || target.type === 'submit') return;
+    e.preventDefault();
+    var focusable = Array.from(document.querySelectorAll(
+      '#inline-input-row input:not([type=hidden]):not([disabled]), #inline-input-row select:not([disabled]), #inline-comment-row textarea'
+    )).filter(function(el) { return el.offsetParent !== null; });
+    var idx = focusable.indexOf(target);
+    if (idx > -1 && idx < focusable.length - 1) focusable[idx + 1].focus();
   });
 
   // Alt+N: open new sale row
