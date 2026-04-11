@@ -1,8 +1,11 @@
+import io
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.http import HttpResponse
+from openpyxl import Workbook
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -853,3 +856,284 @@ def salesman_deactivate(request, pk):
         salesman.is_active = False
         salesman.save(update_fields=["is_active"])
         return redirect("core:salesman_list")
+
+
+# ── Excel export helpers ────────────────────────────────────────────────────
+
+def _excel_response(wb, filename):
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    response = HttpResponse(
+        buf,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _parse_date(s):
+    try:
+        return datetime.strptime(s, "%d.%m.%Y").date()
+    except (ValueError, TypeError):
+        return None
+
+
+@accountant_required
+def accountant_sales_export(request):
+    date_from = _parse_date(request.GET.get("date_from", ""))
+    date_to   = _parse_date(request.GET.get("date_to", ""))
+    currency    = request.GET.get("currency", "").strip()
+    agent_id    = request.GET.get("agent", "").strip()
+    supplier_id = request.GET.get("supplier", "").strip()
+    salesman_id = request.GET.get("salesman", "").strip()
+
+    qs = Sale.objects.all().select_related("supplier", "agent", "salesman", "financial_account").order_by("-date", "-created_at")
+    if date_from:
+        qs = qs.filter(date__gte=date_from)
+    if date_to:
+        qs = qs.filter(date__lte=date_to)
+    if currency in ("UZS", "USD"):
+        qs = qs.filter(sold_currency=currency)
+    if agent_id.isdigit():
+        qs = qs.filter(agent_id=int(agent_id))
+    if supplier_id.isdigit():
+        qs = qs.filter(supplier_id=int(supplier_id))
+    if salesman_id.isdigit():
+        qs = qs.filter(salesman_id=int(salesman_id))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sotuvlar"
+    ws.append(["Sana", "Sotuvchi", "Yetkazib beruvchi", "Turi", "Yo'nalish",
+                "Miqdor", "Tannarx", "Tan. valyuta", "Sotish narxi", "Sot. valyuta",
+                "Foyda", "Foyda valyuta", "Mijoz", "Hisob"])
+    for s in qs:
+        customer = s.agent.name if s.agent else s.customer_name
+        if s.acquired_currency == s.sold_currency:
+            profit = float((s.sold_price - s.acquired_price) * s.quantity)
+            profit_currency = s.sold_currency
+        else:
+            profit = ""
+            profit_currency = ""
+        ws.append([
+            s.date.strftime("%d.%m.%Y"),
+            s.salesman.get_full_name() or s.salesman.phone_number,
+            s.supplier.name,
+            s.get_product_type_display(),
+            s.destination,
+            s.quantity,
+            float(s.acquired_price),
+            s.acquired_currency,
+            float(s.sold_price),
+            s.sold_currency,
+            profit,
+            profit_currency,
+            customer,
+            s.financial_account.name if s.financial_account else "",
+        ])
+    return _excel_response(wb, "sotuvlar.xlsx")
+
+
+@login_required
+def salesman_sales_export(request):
+    if request.user.role == "ACCOUNTANT":
+        return redirect("core:accountant_sales_export")
+    date_from   = _parse_date(request.GET.get("date_from", ""))
+    date_to     = _parse_date(request.GET.get("date_to", ""))
+    currency    = request.GET.get("currency", "").strip()
+    agent_id    = request.GET.get("agent", "").strip()
+    supplier_id = request.GET.get("supplier", "").strip()
+
+    qs = Sale.objects.filter(salesman=request.user).select_related("supplier", "agent").order_by("-date", "-created_at")
+    if date_from:
+        qs = qs.filter(date__gte=date_from)
+    if date_to:
+        qs = qs.filter(date__lte=date_to)
+    if currency in ("UZS", "USD"):
+        qs = qs.filter(sold_currency=currency)
+    if agent_id.isdigit():
+        qs = qs.filter(agent_id=int(agent_id))
+    if supplier_id.isdigit():
+        qs = qs.filter(supplier_id=int(supplier_id))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sotuvlarim"
+    ws.append(["Sana", "Yetkazib beruvchi", "Turi", "Yo'nalish",
+                "Miqdor", "Tannarx", "Tan. valyuta", "Sotish narxi", "Sot. valyuta",
+                "Foyda", "Foyda valyuta", "Mijoz"])
+    for s in qs:
+        customer = s.agent.name if s.agent else s.customer_name
+        if s.acquired_currency == s.sold_currency:
+            profit = float((s.sold_price - s.acquired_price) * s.quantity)
+            profit_currency = s.sold_currency
+        else:
+            profit = ""
+            profit_currency = ""
+        ws.append([
+            s.date.strftime("%d.%m.%Y"),
+            s.supplier.name,
+            s.get_product_type_display(),
+            s.destination,
+            s.quantity,
+            float(s.acquired_price),
+            s.acquired_currency,
+            float(s.sold_price),
+            s.sold_currency,
+            profit,
+            profit_currency,
+            customer,
+        ])
+    return _excel_response(wb, "sotuvlarim.xlsx")
+
+
+@accountant_required
+def agent_detail_export(request, pk):
+    agent = get_object_or_404(Agent, pk=pk)
+    filter_type = request.GET.get("type", "").strip()
+    date_from   = _parse_date(request.GET.get("date_from", ""))
+    date_to     = _parse_date(request.GET.get("date_to", ""))
+
+    sales_qs = Sale.objects.filter(agent=agent).select_related("salesman").order_by("-date", "-created_at")
+    if filter_type in (Sale.TICKET, Sale.UMRA, Sale.TOUR):
+        sales_qs = sales_qs.filter(product_type=filter_type)
+    if date_from:
+        sales_qs = sales_qs.filter(date__gte=date_from)
+    if date_to:
+        sales_qs = sales_qs.filter(date__lte=date_to)
+
+    pay_qs = agent.agentpayment_set.select_related("created_by").order_by("-date", "-created_at")
+    if date_from:
+        pay_qs = pay_qs.filter(date__gte=date_from)
+    if date_to:
+        pay_qs = pay_qs.filter(date__lte=date_to)
+
+    if filter_type in (Sale.TICKET, Sale.UMRA, Sale.TOUR):
+        rows = [{"kind": "sale", "obj": s} for s in sales_qs]
+    else:
+        rows = (
+            [{"kind": "sale", "obj": s} for s in sales_qs]
+            + [{"kind": "payment", "obj": p} for p in pay_qs]
+        )
+        rows.sort(key=lambda x: (x["obj"].date, x["obj"].created_at), reverse=True)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = agent.name[:31]
+    ws.append(["Sana", "Turi", "Yo'nalish / Izoh", "Miqdor",
+                "Sotuv (so'm)", "Sotuv ($)", "To'lov (so'm)", "To'lov ($)", "Kim"])
+    for row in rows:
+        obj = row["obj"]
+        if row["kind"] == "sale":
+            ws.append([
+                obj.date.strftime("%d.%m.%Y"),
+                obj.get_product_type_display(),
+                obj.destination,
+                obj.quantity,
+                float(obj.sold_price) if obj.sold_currency == UZS else "",
+                float(obj.sold_price) if obj.sold_currency == USD else "",
+                "",
+                "",
+                obj.salesman.get_full_name() or obj.salesman.phone_number,
+            ])
+        else:
+            ws.append([
+                obj.date.strftime("%d.%m.%Y"),
+                "To'lov",
+                obj.note or "",
+                "",
+                "",
+                "",
+                float(obj.amount) if obj.currency == UZS else "",
+                float(obj.amount) if obj.currency == USD else "",
+                obj.created_by.get_full_name() or obj.created_by.phone_number,
+            ])
+    return _excel_response(wb, f"agent-{agent.pk}.xlsx")
+
+
+@accountant_required
+def supplier_detail_export(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    filter_type = request.GET.get("type", "").strip()
+    date_from   = _parse_date(request.GET.get("date_from", ""))
+    date_to     = _parse_date(request.GET.get("date_to", ""))
+
+    sales_qs = Sale.objects.filter(supplier=supplier).select_related("salesman").order_by("-date", "-created_at")
+    if filter_type in (Sale.TICKET, Sale.UMRA, Sale.TOUR):
+        sales_qs = sales_qs.filter(product_type=filter_type)
+    if date_from:
+        sales_qs = sales_qs.filter(date__gte=date_from)
+    if date_to:
+        sales_qs = sales_qs.filter(date__lte=date_to)
+
+    pay_qs = supplier.supplierpayment_set.select_related("created_by").order_by("-date", "-created_at")
+    if date_from:
+        pay_qs = pay_qs.filter(date__gte=date_from)
+    if date_to:
+        pay_qs = pay_qs.filter(date__lte=date_to)
+
+    if filter_type in (Sale.TICKET, Sale.UMRA, Sale.TOUR):
+        rows = [{"kind": "sale", "obj": s} for s in sales_qs]
+    else:
+        rows = (
+            [{"kind": "sale", "obj": s} for s in sales_qs]
+            + [{"kind": "payment", "obj": p} for p in pay_qs]
+        )
+        rows.sort(key=lambda x: (x["obj"].date, x["obj"].created_at), reverse=True)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = supplier.name[:31]
+    ws.append(["Sana", "Turi", "Yo'nalish / Izoh", "Miqdor",
+                "Tannarx (so'm)", "Tannarx ($)", "To'lov (so'm)", "To'lov ($)", "Kim"])
+    for row in rows:
+        obj = row["obj"]
+        if row["kind"] == "sale":
+            ws.append([
+                obj.date.strftime("%d.%m.%Y"),
+                obj.get_product_type_display(),
+                obj.destination,
+                obj.quantity,
+                float(obj.total_cost) if obj.acquired_currency == UZS else "",
+                float(obj.total_cost) if obj.acquired_currency == USD else "",
+                "",
+                "",
+                obj.salesman.get_full_name() or obj.salesman.phone_number,
+            ])
+        else:
+            ws.append([
+                obj.date.strftime("%d.%m.%Y"),
+                "To'lov",
+                obj.note or "",
+                "",
+                "",
+                "",
+                float(obj.amount) if obj.currency == UZS else "",
+                float(obj.amount) if obj.currency == USD else "",
+                obj.created_by.get_full_name() or obj.created_by.phone_number,
+            ])
+    return _excel_response(wb, f"yetkazib-beruvchi-{supplier.pk}.xlsx")
+
+
+@accountant_required
+def expenditure_export(request):
+    qs = (
+        Expenditure.objects.filter(is_active=True)
+        .select_related("financial_account", "registered_by")
+        .order_by("-date", "-created_at")
+    )
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Xarajatlar"
+    ws.append(["Sana", "Izoh", "Hisob", "Summa", "Valyuta", "Qo'shdi"])
+    for exp in qs:
+        ws.append([
+            exp.date.strftime("%d.%m.%Y"),
+            exp.description,
+            exp.financial_account.name,
+            float(exp.amount),
+            exp.currency,
+            exp.registered_by.get_full_name() or exp.registered_by.phone_number,
+        ])
+    return _excel_response(wb, "xarajatlar.xlsx")

@@ -28,6 +28,7 @@
       {% if request.user.is_superuser %}
         <button class="btn btn-danger" @click="deleteOpen = true">O'chirish</button>
       {% endif %}
+      <a href="{% url 'core:supplier_detail_export' supplier.pk %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Excel ↓</a>
       <button class="btn btn-primary" @click="payOpen = !payOpen">+ To'lov qilish</button>
     </div>
   </div>

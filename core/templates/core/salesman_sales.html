@@ -12,12 +12,15 @@
 
   <div class="page-header">
     <h1>Sotuvlarim</h1>
-    <button
-      class="btn btn-primary"
-      @click="open = true; customerType = 'WALKIN'; productType = 'TICKET'; $nextTick(() => { resetInlineRow(); initInlineFlatpickr(); })"
-    >
-      + Yangi sotuv
-    </button>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <a href="{% url 'core:salesman_sales_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Excel ↓</a>
+      <button
+        class="btn btn-primary"
+        @click="open = true; customerType = 'WALKIN'; productType = 'TICKET'; $nextTick(() => { resetInlineRow(); initInlineFlatpickr(); })"
+      >
+        + Yangi sotuv
+      </button>
+    </div>
   </div>
 
   <form method="get" class="filter-bar">

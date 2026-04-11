@@ -8,7 +8,10 @@
 
   <div class="page-header">
     <h1>Xarajatlar</h1>
-    <button class="btn btn-primary" @click="open = !open">+ Xarajat qo'shish</button>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <a href="{% url 'core:expenditure_export' %}" class="btn btn-secondary">Excel ↓</a>
+      <button class="btn btn-primary" @click="open = !open">+ Xarajat qo'shish</button>
+    </div>
   </div>
 
   <!-- Create form -->

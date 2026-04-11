@@ -8,6 +8,7 @@
 
   <div class="page-header">
     <h1>Barcha sotuvlar</h1>
+    <a href="{% url 'core:accountant_sales_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Excel ↓</a>
   </div>
 
   <form method="get" class="filter-bar">
