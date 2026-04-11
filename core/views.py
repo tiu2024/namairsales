@@ -6,20 +6,25 @@ from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import accountant_required
+from accounts.models import CustomUser
 
 from .forms import AgentForm, AgentPaymentForm, SaleForm, SupplierForm, SupplierPaymentForm
 from .models import USD, UZS, Agent, FinancialAccount, Sale, Supplier
-from .services import record_agent_payment, record_supplier_payment
+from .services import link_sale_to_account, record_agent_payment, record_supplier_payment, unlink_sale_from_account
 
 
 def index(request):
     if not request.user.is_authenticated:
         return redirect("accounts:login")
+    if request.user.role == "ACCOUNTANT":
+        return redirect("core:accountant_sales")
     return redirect("core:salesman_sales")
 
 
 @login_required
 def salesman_sales(request):
+    if request.user.role == "ACCOUNTANT":
+        return redirect("core:accountant_sales")
     # Parse filter params
     date_from_str = request.GET.get("date_from", "").strip()
     date_to_str   = request.GET.get("date_to", "").strip()
@@ -123,6 +128,121 @@ def sale_add(request):
     response = render(request, "core/partials/sale_form.html", {"form": form}, status=400)
     response["HX-Reswap"] = "none"
     return response
+
+
+@accountant_required
+def accountant_sales(request):
+    # Parse filter params
+    date_from_str = request.GET.get("date_from", "").strip()
+    date_to_str   = request.GET.get("date_to", "").strip()
+    currency      = request.GET.get("currency", "").strip()
+    agent_id      = request.GET.get("agent", "").strip()
+    supplier_id   = request.GET.get("supplier", "").strip()
+    salesman_id   = request.GET.get("salesman", "").strip()
+
+    def parse_date(s):
+        try:
+            return datetime.strptime(s, "%d.%m.%Y").date()
+        except ValueError:
+            return None
+
+    date_from = parse_date(date_from_str)
+    date_to   = parse_date(date_to_str)
+
+    all_sales = (
+        Sale.objects.all()
+        .select_related("supplier", "agent", "salesman", "financial_account")
+        .order_by("-date", "-created_at")
+    )
+
+    if date_from:
+        all_sales = all_sales.filter(date__gte=date_from)
+    if date_to:
+        all_sales = all_sales.filter(date__lte=date_to)
+    if currency in ("UZS", "USD"):
+        all_sales = all_sales.filter(sold_currency=currency)
+    if agent_id.isdigit():
+        all_sales = all_sales.filter(agent_id=int(agent_id))
+    if supplier_id.isdigit():
+        all_sales = all_sales.filter(supplier_id=int(supplier_id))
+    if salesman_id.isdigit():
+        all_sales = all_sales.filter(salesman_id=int(salesman_id))
+
+    total_sold_uzs = all_sales.filter(sold_currency="UZS").aggregate(
+        t=Sum("sold_price"))["t"] or 0
+    total_sold_usd = all_sales.filter(sold_currency="USD").aggregate(
+        t=Sum("sold_price"))["t"] or 0
+
+    _profit_expr = ExpressionWrapper(
+        (F("sold_price") - F("acquired_price")) * F("quantity"),
+        output_field=DecimalField(),
+    )
+    profit_uzs = (
+        all_sales.filter(acquired_currency="UZS", sold_currency="UZS")
+        .annotate(lp=_profit_expr)
+        .aggregate(t=Sum("lp"))["t"] or 0
+    )
+    profit_usd = (
+        all_sales.filter(acquired_currency="USD", sold_currency="USD")
+        .annotate(lp=_profit_expr)
+        .aggregate(t=Sum("lp"))["t"] or 0
+    )
+
+    paginator = Paginator(all_sales, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    filter_query = params.urlencode()
+
+    return render(request, "core/accountant_sales.html", {
+        "sales": page_obj,
+        "page_obj": page_obj,
+        "total_sold_uzs": total_sold_uzs,
+        "total_sold_usd": total_sold_usd,
+        "profit_uzs": profit_uzs,
+        "profit_usd": profit_usd,
+        "filter_date_from": date_from_str,
+        "filter_date_to": date_to_str,
+        "filter_currency": currency,
+        "filter_agent_id": agent_id,
+        "filter_supplier_id": supplier_id,
+        "filter_salesman_id": salesman_id,
+        "all_agents": Agent.objects.order_by("name"),
+        "all_suppliers": Supplier.objects.order_by("name"),
+        "all_salesmen": CustomUser.objects.order_by("phone_number"),
+        "all_accounts": FinancialAccount.objects.order_by("name"),
+        "filter_query": filter_query,
+    })
+
+
+@accountant_required
+def sale_link_account(request, pk):
+    if not request.headers.get("HX-Request"):
+        return redirect("core:accountant_sales")
+    sale = get_object_or_404(Sale.objects.select_related("supplier", "agent", "salesman", "financial_account"), pk=pk)
+    fa_id = request.POST.get("financial_account", "").strip()
+    if not fa_id.isdigit():
+        if not sale.financial_account_id:
+            from django.http import HttpResponse
+            r = HttpResponse(status=200)
+            r["HX-Reswap"] = "none"
+            return r
+        unlink_sale_from_account(sale=sale, user=request.user)
+    else:
+        financial_account = get_object_or_404(FinancialAccount, pk=int(fa_id))
+        try:
+            link_sale_to_account(sale=sale, financial_account=financial_account, user=request.user)
+        except ValueError as e:
+            from django.http import HttpResponse
+            r = HttpResponse(status=400)
+            r["HX-Trigger"] = f'{{"toast": "{e}"}}'
+            return r
+    sale = Sale.objects.select_related("supplier", "agent", "salesman", "financial_account").get(pk=sale.pk)
+    return render(request, "core/partials/accountant_sale_row.html", {
+        "sale": sale,
+        "all_accounts": FinancialAccount.objects.order_by("name"),
+    })
 
 
 @accountant_required

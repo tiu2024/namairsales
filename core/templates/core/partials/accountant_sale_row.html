@@ -1,0 +1,52 @@
+<tr id="sale-row-{{ sale.pk }}" class="sale-row{% if sale.commentary %} has-comment{% endif %}" data-sale-pk="{{ sale.pk }}">
+  <td>
+    {{ sale.date|date:"d.m.Y" }}{% if sale.commentary %}<svg class="comment-indicator" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{% endif %}
+  </td>
+  <td>{{ sale.salesman.get_full_name|default:sale.salesman.phone_number }}</td>
+  <td>{{ sale.supplier.name }}</td>
+  <td>{{ sale.get_product_type_display }}</td>
+  <td>{{ sale.destination }}</td>
+  <td class="mono">{{ sale.quantity }}</td>
+  <td class="mono">{{ sale.acquired_price }} {{ sale.acquired_currency }}</td>
+  <td class="mono">{{ sale.sold_price }} {{ sale.sold_currency }}</td>
+  <td>
+    {% if sale.customer_type == "AGENT" %}
+      {{ sale.agent.name }}
+    {% else %}
+      {{ sale.customer_name }}
+    {% endif %}
+  </td>
+  <td class="mono">
+    {% if sale.acquired_currency == sale.sold_currency %}
+      <span class="{% if sale.profit >= 0 %}profit--pos{% else %}profit--neg{% endif %}">
+        {{ sale.profit }} {{ sale.sold_currency }}
+      </span>
+    {% else %}
+      <span class="profit--mixed">
+        {{ sale.acquired_price }} {{ sale.acquired_currency }}<br>
+        <span class="profit--sold">{{ sale.sold_price }} {{ sale.sold_currency }}</span>
+      </span>
+    {% endif %}
+  </td>
+  <td>
+    <form hx-post="{% url 'core:sale_link_account' sale.pk %}"
+          hx-target="#sale-row-{{ sale.pk }}"
+          hx-swap="outerHTML"
+          hx-trigger="change">
+      {% csrf_token %}
+      <select name="financial_account" class="cell-input{% if sale.financial_account %} cell-input--linked{% endif %}">
+        <option value="">—</option>
+        {% for a in all_accounts %}
+          {% if a.currency == sale.sold_currency %}
+            <option value="{{ a.pk }}" {% if sale.financial_account_id == a.pk %}selected{% endif %}>{{ a.name }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </form>
+  </td>
+</tr>
+{% if sale.commentary %}
+<tr class="comment-row" id="comment-row-{{ sale.pk }}" style="display:none;">
+  <td colspan="11" class="comment-cell">{{ sale.commentary }}</td>
+</tr>
+{% endif %}
