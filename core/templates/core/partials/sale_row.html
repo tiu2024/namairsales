@@ -27,9 +27,16 @@
       </span>
     {% endif %}
   </td>
+  <td style="text-align:right;">
+    <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+      <a href="{% url 'core:sale_edit' sale.pk %}" class="btn btn-secondary" style="font-size:12px; padding:3px 10px;">Tahrirlash</a>
+      <button class="btn btn-secondary" style="font-size:12px; padding:3px 10px; color:var(--crimson);"
+        @click.stop="deleteId = {{ sale.pk }}">O'chirish</button>
+    </div>
+  </td>
 </tr>
 {% if sale.commentary %}
 <tr class="comment-row" id="comment-row-{{ sale.pk }}" style="display:none;">
-  <td colspan="9" class="comment-cell">{{ sale.commentary }}</td>
+  <td colspan="10" class="comment-cell">{{ sale.commentary }}</td>
 </tr>
 {% endif %}

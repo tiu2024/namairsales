@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -243,6 +244,52 @@ def sale_link_account(request, pk):
         "sale": sale,
         "all_accounts": FinancialAccount.objects.order_by("name"),
     })
+
+
+@login_required
+def sale_edit(request, pk):
+    sale = get_object_or_404(Sale.objects.select_related("financial_account"), pk=pk)
+    if request.user.role != "ACCOUNTANT" and sale.salesman != request.user:
+        return redirect("core:salesman_sales")
+
+    linked_account = sale.financial_account  # snapshot before any changes
+
+    if request.method == "POST":
+        form = SaleForm(request.POST, instance=sale)
+        if form.is_valid():
+            with transaction.atomic():
+                if sale.financial_account_id:
+                    unlink_sale_from_account(sale=sale, user=request.user)
+                updated_sale = form.save()
+                if linked_account and linked_account.currency == updated_sale.sold_currency:
+                    link_sale_to_account(
+                        sale=updated_sale,
+                        financial_account=linked_account,
+                        user=request.user,
+                    )
+            if request.user.role == "ACCOUNTANT":
+                return redirect("core:accountant_sales")
+            return redirect("core:salesman_sales")
+    else:
+        form = SaleForm(instance=sale)
+
+    return render(request, "core/sale_edit.html", {"form": form, "sale": sale})
+
+
+@login_required
+def sale_delete(request, pk):
+    if request.method != "POST":
+        return redirect("core:salesman_sales")
+    sale = get_object_or_404(Sale, pk=pk)
+    if request.user.role != "ACCOUNTANT" and sale.salesman != request.user:
+        return redirect("core:salesman_sales")
+    with transaction.atomic():
+        if sale.financial_account_id:
+            unlink_sale_from_account(sale=sale, user=request.user)
+        sale.delete()
+    if request.user.role == "ACCOUNTANT":
+        return redirect("core:accountant_sales")
+    return redirect("core:salesman_sales")
 
 
 @accountant_required

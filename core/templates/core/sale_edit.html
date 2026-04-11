@@ -1,0 +1,131 @@
+{% extends "core/base.html" %}
+
+{% block title %}Sotuvni tahrirlash — NamAirSales{% endblock %}
+
+{% block content %}
+<div x-data="{ customerType: '{{ sale.customer_type }}' }">
+
+  <div style="margin-bottom:16px;">
+    {% if request.user.role == 'ACCOUNTANT' %}
+      <a href="{% url 'core:accountant_sales' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Barcha sotuvlar</a>
+    {% else %}
+      <a href="{% url 'core:salesman_sales' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Sotuvlarim</a>
+    {% endif %}
+  </div>
+
+  <div class="page-header">
+    <h1>Sotuvni tahrirlash</h1>
+  </div>
+
+  <div class="form-card">
+    <form method="post" action="{% url 'core:sale_edit' sale.pk %}">
+      {% csrf_token %}
+      <div class="form-grid">
+
+        <div class="field {% if form.date.errors %}field--error{% endif %}">
+          <label for="{{ form.date.id_for_label }}">Sana</label>
+          {{ form.date }}
+          {% for e in form.date.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.supplier.errors %}field--error{% endif %}">
+          <label for="{{ form.supplier.id_for_label }}">Yetkazib beruvchi</label>
+          {{ form.supplier }}
+          {% for e in form.supplier.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.product_type.errors %}field--error{% endif %}">
+          <label for="{{ form.product_type.id_for_label }}">Turi</label>
+          {{ form.product_type }}
+          {% for e in form.product_type.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.destination.errors %}field--error{% endif %}">
+          <label for="{{ form.destination.id_for_label }}">Yo'nalish</label>
+          {{ form.destination }}
+          {% for e in form.destination.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.quantity.errors %}field--error{% endif %}">
+          <label for="{{ form.quantity.id_for_label }}">Miqdor</label>
+          {{ form.quantity }}
+          {% for e in form.quantity.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.acquired_price.errors %}field--error{% endif %}">
+          <label for="{{ form.acquired_price.id_for_label }}">Tannarx</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            {{ form.acquired_price }}
+            {{ form.acquired_currency }}
+          </div>
+          {% for e in form.acquired_price.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          {% for e in form.acquired_currency.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.sold_price.errors %}field--error{% endif %}">
+          <label for="{{ form.sold_price.id_for_label }}">Sotish narxi</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            {{ form.sold_price }}
+            {{ form.sold_currency }}
+          </div>
+          {% for e in form.sold_price.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          {% for e in form.sold_currency.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.customer_type.errors %}field--error{% endif %}">
+          <label for="{{ form.customer_type.id_for_label }}">Mijoz turi</label>
+          <div x-data @change="customerType = $event.target.value">
+            {{ form.customer_type }}
+          </div>
+          {% for e in form.customer_type.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.agent.errors %}field--error{% endif %}"
+          x-show="customerType === 'AGENT'">
+          <label for="{{ form.agent.id_for_label }}">Agent</label>
+          {{ form.agent }}
+          {% for e in form.agent.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.customer_name.errors %}field--error{% endif %}"
+          x-show="customerType === 'WALKIN'">
+          <label for="{{ form.customer_name.id_for_label }}">Mijoz ismi</label>
+          {{ form.customer_name }}
+          {% for e in form.customer_name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.customer_passport.errors %}field--error{% endif %}"
+          x-show="customerType === 'WALKIN'">
+          <label for="{{ form.customer_passport.id_for_label }}">Pasport (ixtiyoriy)</label>
+          {{ form.customer_passport }}
+          {% for e in form.customer_passport.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field full-width {% if form.commentary.errors %}field--error{% endif %}">
+          <label for="{{ form.commentary.id_for_label }}">Izoh (ixtiyoriy)</label>
+          {{ form.commentary }}
+          {% for e in form.commentary.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+      </div>
+
+      {% if sale.financial_account %}
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+        Bu sotuv <strong>{{ sale.financial_account.name }}</strong> hisobiga bog'langan. Saqlashda hisob balansiga mos bo'lsa, qayta bog'lanadi.
+      </p>
+      {% endif %}
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Saqlash</button>
+        {% if request.user.role == 'ACCOUNTANT' %}
+          <a href="{% url 'core:accountant_sales' %}" class="btn btn-secondary">Bekor qilish</a>
+        {% else %}
+          <a href="{% url 'core:salesman_sales' %}" class="btn btn-secondary">Bekor qilish</a>
+        {% endif %}
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

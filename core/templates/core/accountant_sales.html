@@ -4,7 +4,7 @@
 {% block title %}Barcha sotuvlar — NamAirSales{% endblock %}
 
 {% block content %}
-<div>
+<div x-data="{ deleteId: null }">
 
   <div class="page-header">
     <h1>Barcha sotuvlar</h1>
@@ -83,6 +83,7 @@
           <th>Mijoz</th>
           <th>Foyda</th>
           <th style="min-width:140px;">Hisob</th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="sale-list-body">
@@ -90,7 +91,7 @@
           {% include "core/partials/accountant_sale_row.html" %}
         {% empty %}
           <tr>
-            <td colspan="11" class="empty-state">Hozircha sotuvlar yo'q.</td>
+            <td colspan="12" class="empty-state">Hozircha sotuvlar yo'q.</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -132,6 +133,22 @@
         <span class="summary-sep">·</span>
         <span class="summary-val mono {% if profit_usd >= 0 %}profit--pos{% else %}profit--neg{% endif %}">{{ profit_usd|usd }} $</span>
       </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation modal -->
+  <div x-show="deleteId !== null" x-transition
+    style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;display:flex;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border-radius:8px;padding:28px 32px;max-width:360px;width:100%;box-shadow:0 8px 24px rgba(0,0,0,0.15);">
+      <p style="font-weight:600;margin-bottom:6px;">Sotuvni o'chirish</p>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Bu amalni bekor qilib bo'lmaydi.</p>
+      <form method="post" :action="`/sotuvlar/${deleteId}/ochirish/`">
+        {% csrf_token %}
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn btn-primary" style="background:var(--crimson);border-color:var(--crimson);">O'chirish</button>
+          <button type="button" class="btn btn-secondary" @click="deleteId = null">Bekor</button>
+        </div>
+      </form>
     </div>
   </div>
 
