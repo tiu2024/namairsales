@@ -2,7 +2,7 @@ from datetime import date
 
 from django import forms
 
-from .models import Agent, AgentPayment, Sale, Supplier, SupplierPayment
+from .models import Agent, AgentPayment, Expenditure, Sale, Supplier, SupplierPayment
 
 
 class SaleForm(forms.ModelForm):
@@ -89,6 +89,33 @@ class AgentPaymentForm(forms.ModelForm):
             self.add_error(
                 "financial_account",
                 "Hisob valyutasi to'lov valyutasiga mos kelishi kerak.",
+            )
+        return cleaned
+
+
+class ExpenditureForm(forms.ModelForm):
+    date = forms.DateField(
+        widget=forms.TextInput(attrs={"data-flatpickr": "", "placeholder": "KK.OO.YYYY"}),
+        input_formats=["%d.%m.%Y"],
+        initial=date.today,
+    )
+
+    class Meta:
+        model = Expenditure
+        fields = ["amount", "currency", "financial_account", "date", "description"]
+        widgets = {
+            "amount": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+            "description": forms.TextInput(),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        currency = cleaned.get("currency")
+        account = cleaned.get("financial_account")
+        if currency and account and account.currency != currency:
+            self.add_error(
+                "financial_account",
+                "Hisob valyutasi xarajat valyutasiga mos kelishi kerak.",
             )
         return cleaned
 

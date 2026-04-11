@@ -495,6 +495,8 @@
     <nav class="topnav-nav">
       {% if request.user.role == 'ACCOUNTANT' %}
       <a href="{% url 'core:accountant_sales' %}" {% if request.resolver_match.url_name == 'accountant_sales' %}class="active"{% endif %}>Barcha sotuvlar</a>
+      <a href="{% url 'core:expenditure_list' %}" {% if 'xarajatlar' in request.path %}class="active"{% endif %}>Xarajatlar</a>
+      <a href="{% url 'core:financial_account_list' %}" {% if 'hisob-raqamlar' in request.path %}class="active"{% endif %}>Hisob-raqamlar</a>
       <a href="{% url 'core:supplier_list' %}" {% if 'yetkazib-beruvchilar' in request.path %}class="active"{% endif %}>Yetkazib beruvchilar</a>
       <a href="{% url 'core:agent_list' %}" {% if 'agentlar' in request.path %}class="active"{% endif %}>Agentlar</a>
       {% else %}

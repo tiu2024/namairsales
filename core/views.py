@@ -8,9 +8,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from accounts.decorators import accountant_required
 from accounts.models import CustomUser
 
-from .forms import AgentForm, AgentPaymentForm, SaleForm, SupplierForm, SupplierPaymentForm
-from .models import USD, UZS, Agent, FinancialAccount, Sale, Supplier
-from .services import link_sale_to_account, record_agent_payment, record_supplier_payment, unlink_sale_from_account
+from .forms import AgentForm, AgentPaymentForm, ExpenditureForm, SaleForm, SupplierForm, SupplierPaymentForm
+from .models import USD, UZS, Agent, AgentPayment, Expenditure, FinancialAccount, Sale, Supplier, SupplierPayment
+from .services import link_sale_to_account, record_agent_payment, record_expenditure, record_supplier_payment, unlink_sale_from_account
 
 
 def index(request):
@@ -502,4 +502,152 @@ def agent_detail(request, pk):
         "payment_open": payment_open,
         "date_from_str": date_from_str,
         "date_to_str": date_to_str,
+    })
+
+
+@accountant_required
+def expenditure_list(request):
+    form = ExpenditureForm()
+    form_open = False
+
+    if request.method == "POST":
+        form = ExpenditureForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            record_expenditure(
+                amount=cd["amount"],
+                currency=cd["currency"],
+                financial_account=cd["financial_account"],
+                date=cd["date"],
+                description=cd["description"],
+                user=request.user,
+            )
+            return redirect("core:expenditure_list")
+        form_open = True
+
+    expenditures = (
+        Expenditure.objects.all()
+        .select_related("financial_account", "registered_by")
+        .order_by("-date", "-created_at")
+    )
+    return render(request, "core/expenditure_list.html", {
+        "expenditures": expenditures,
+        "form": form,
+        "form_open": form_open,
+    })
+
+
+@accountant_required
+def financial_account_list(request):
+    q = request.GET.get("q", "").strip()
+    accounts = FinancialAccount.objects.order_by("name")
+    if q:
+        accounts = accounts.filter(name__icontains=q)
+    return render(request, "core/financial_account_list.html", {
+        "accounts": accounts,
+        "q": q,
+    })
+
+
+@accountant_required
+def financial_account_detail(request, pk):
+    account = get_object_or_404(FinancialAccount, pk=pk)
+
+    date_from_str = request.GET.get("date_from", "").strip()
+    date_to_str   = request.GET.get("date_to", "").strip()
+
+    def parse_date(s):
+        try:
+            return datetime.strptime(s, "%d.%m.%Y").date()
+        except ValueError:
+            return None
+
+    date_from = parse_date(date_from_str)
+    date_to   = parse_date(date_to_str)
+
+    sales = Sale.objects.filter(financial_account=account).select_related("salesman", "supplier", "agent")
+    supplier_payments = SupplierPayment.objects.filter(financial_account=account).select_related("supplier", "created_by")
+    agent_payments = AgentPayment.objects.filter(financial_account=account).select_related("agent", "created_by")
+    expenditures = Expenditure.objects.filter(financial_account=account).select_related("registered_by")
+
+    if date_from:
+        sales = sales.filter(date__gte=date_from)
+        supplier_payments = supplier_payments.filter(date__gte=date_from)
+        agent_payments = agent_payments.filter(date__gte=date_from)
+        expenditures = expenditures.filter(date__gte=date_from)
+    if date_to:
+        sales = sales.filter(date__lte=date_to)
+        supplier_payments = supplier_payments.filter(date__lte=date_to)
+        agent_payments = agent_payments.filter(date__lte=date_to)
+        expenditures = expenditures.filter(date__lte=date_to)
+
+    rows = []
+    for obj in sales:
+        rows.append({
+            "date": obj.date,
+            "created_at": obj.created_at,
+            "kind": "sale",
+            "label": "Sotuv",
+            "who": obj.destination,
+            "note": obj.commentary,
+            "amount": obj.sold_price,
+            "currency": obj.sold_currency,
+            "sign": "+",
+            "actor": obj.salesman.get_full_name() or obj.salesman.phone_number,
+        })
+    for obj in supplier_payments:
+        rows.append({
+            "date": obj.date,
+            "created_at": obj.created_at,
+            "kind": "supplier_payment",
+            "label": "Yetkazib beruvchiga to'lov",
+            "who": obj.supplier.name,
+            "note": obj.note,
+            "amount": obj.amount,
+            "currency": obj.currency,
+            "sign": "-",
+            "actor": obj.created_by.get_full_name() or obj.created_by.phone_number,
+        })
+    for obj in agent_payments:
+        rows.append({
+            "date": obj.date,
+            "created_at": obj.created_at,
+            "kind": "agent_payment",
+            "label": "Agentga to'lov",
+            "who": obj.agent.name,
+            "note": obj.note,
+            "amount": obj.amount,
+            "currency": obj.currency,
+            "sign": "-",
+            "actor": obj.created_by.get_full_name() or obj.created_by.phone_number,
+        })
+    for obj in expenditures:
+        rows.append({
+            "date": obj.date,
+            "created_at": obj.created_at,
+            "kind": "expenditure",
+            "label": "Xarajat",
+            "who": obj.description,
+            "note": "",
+            "amount": obj.amount,
+            "currency": obj.currency,
+            "sign": "-",
+            "actor": obj.registered_by.get_full_name() or obj.registered_by.phone_number,
+        })
+
+    rows.sort(key=lambda x: (x["date"], x["created_at"]), reverse=True)
+
+    paginator = Paginator(rows, 30)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    filter_query = params.urlencode()
+
+    return render(request, "core/financial_account_detail.html", {
+        "account": account,
+        "page_obj": page_obj,
+        "date_from_str": date_from_str,
+        "date_to_str": date_to_str,
+        "filter_query": filter_query,
     })

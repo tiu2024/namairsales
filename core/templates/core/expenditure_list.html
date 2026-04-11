@@ -1,0 +1,97 @@
+{% extends "core/base.html" %}
+{% load core_filters %}
+
+{% block title %}Xarajatlar — NamAirSales{% endblock %}
+
+{% block content %}
+<div x-data="{ open: {{ form_open|yesno:'true,false' }} }">
+
+  <div class="page-header">
+    <h1>Xarajatlar</h1>
+    <button class="btn btn-primary" @click="open = !open">+ Xarajat qo'shish</button>
+  </div>
+
+  <!-- Create form -->
+  <div x-show="open" x-transition.opacity.duration.150ms style="display:none; margin-bottom:20px;">
+    <div class="form-card">
+      <div class="form-card-header">
+        <h2>Yangi xarajat</h2>
+        <button type="button" class="btn btn-secondary" @click="open = false">× Bekor</button>
+      </div>
+      <form method="post" action="{% url 'core:expenditure_list' %}">
+        {% csrf_token %}
+        <div class="form-grid">
+
+          <div class="field full-width {% if form.description.errors %}field--error{% endif %}">
+            <label for="{{ form.description.id_for_label }}">Izoh</label>
+            {{ form.description }}
+            {% for e in form.description.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.amount.errors %}field--error{% endif %}">
+            <label for="{{ form.amount.id_for_label }}">Summa</label>
+            {{ form.amount }}
+            {% for e in form.amount.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.currency.errors %}field--error{% endif %}">
+            <label for="{{ form.currency.id_for_label }}">Valyuta</label>
+            {{ form.currency }}
+            {% for e in form.currency.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.financial_account.errors %}field--error{% endif %}">
+            <label for="{{ form.financial_account.id_for_label }}">Hisob</label>
+            {{ form.financial_account }}
+            {% for e in form.financial_account.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.date.errors %}field--error{% endif %}">
+            <label for="{{ form.date.id_for_label }}">Sana</label>
+            {{ form.date }}
+            {% for e in form.date.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Saqlash</button>
+          <button type="button" class="btn btn-secondary" @click="open = false">Bekor qilish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Expenditures table -->
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Sana</th>
+          <th>Izoh</th>
+          <th>Hisob</th>
+          <th style="text-align:right;">Summa</th>
+          <th>Qo'shdi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for exp in expenditures %}
+        <tr>
+          <td class="mono" style="white-space:nowrap;">{{ exp.date|date:"d.m.Y" }}</td>
+          <td>{{ exp.description }}</td>
+          <td style="color:var(--text-muted);">{{ exp.financial_account.name }}</td>
+          <td class="mono" style="text-align:right; color:var(--crimson);">
+            {% if exp.currency == 'UZS' %}{{ exp.amount|uzs }}{% else %}{{ exp.amount|usd }}{% endif %}
+          </td>
+          <td style="color:var(--text-muted); font-size:12px;">{{ exp.registered_by.get_full_name|default:exp.registered_by.phone_number }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="empty-state">Hozircha xarajatlar yo'q.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

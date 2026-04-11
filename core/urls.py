@@ -15,4 +15,7 @@ urlpatterns = [
     path("yetkazib-beruvchilar/<int:pk>/", views.supplier_detail, name="supplier_detail"),
     path("agentlar/", views.agent_list, name="agent_list"),
     path("agentlar/<int:pk>/", views.agent_detail, name="agent_detail"),
+    path("xarajatlar/", views.expenditure_list, name="expenditure_list"),
+    path("hisob-raqamlar/", views.financial_account_list, name="financial_account_list"),
+    path("hisob-raqamlar/<int:pk>/", views.financial_account_detail, name="financial_account_detail"),
 ]

@@ -1,0 +1,140 @@
+{% extends "core/base.html" %}
+{% load core_filters %}
+
+{% block title %}{{ account.name }} — NamAirSales{% endblock %}
+
+{% block content %}
+
+  <div style="margin-bottom:16px;">
+    <a href="{% url 'core:financial_account_list' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Hisob-raqamlar</a>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1>{{ account.name }}</h1>
+      <p style="margin-top:4px; font-size:13px; color:var(--text-muted);">
+        {{ account.get_account_type_display }} · {{ account.get_currency_display }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Balance summary card -->
+  <div class="summary-card" style="margin-bottom:20px;">
+    <div class="summary-group">
+      <span class="summary-label">Balans</span>
+      <span class="summary-val mono"
+        style="font-size:18px; color:{% if account.balance >= 0 %}var(--emerald){% else %}var(--crimson){% endif %};">
+        {% if account.currency == 'UZS' %}{{ account.balance|uzs }}{% else %}{{ account.balance|usd }}{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <!-- Date filters -->
+  <div style="margin-bottom:16px;">
+    <form method="get" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <input type="text" name="date_from" value="{{ date_from_str }}"
+        data-flatpickr placeholder="Dan (KK.OO.YYYY)"
+        style="width:140px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; color:var(--text); background:var(--surface);">
+      <input type="text" name="date_to" value="{{ date_to_str }}"
+        data-flatpickr placeholder="Gacha (KK.OO.YYYY)"
+        style="width:140px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; color:var(--text); background:var(--surface);">
+      <button type="submit" class="btn btn-secondary" style="font-size:13px; padding:6px 14px;">Filtrlash</button>
+      {% if date_from_str or date_to_str %}
+        <a href="?" style="font-size:13px; color:var(--text-muted); text-decoration:none;">× Tozalash</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Transactions table -->
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:96px;">Sana</th>
+          <th>Turi</th>
+          <th>Tafsilot</th>
+          <th>Izoh</th>
+          <th style="text-align:right;">Miqdor</th>
+          <th>Amalga oshirdi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in page_obj %}
+        <tr>
+          <td class="mono" style="white-space:nowrap;">{{ row.date|date:"d.m.Y" }}</td>
+          <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">{{ row.label }}</td>
+          <td>
+            {% if row.kind == 'expenditure' %}
+              <span style="font-weight:500;">{{ row.who }}</span>
+            {% else %}
+              {{ row.who }}
+            {% endif %}
+          </td>
+          <td style="color:var(--text-muted); font-size:12px;">{{ row.note|default:"" }}</td>
+          <td class="mono" style="text-align:right; white-space:nowrap;
+            color:{% if row.sign == '+' %}var(--emerald){% else %}var(--crimson){% endif %};">
+            {{ row.sign }}{% if row.currency == 'UZS' %}{{ row.amount|uzs }}{% else %}{{ row.amount|usd }}{% endif %}
+          </td>
+          <td style="color:var(--text-muted); font-size:12px; white-space:nowrap;">{{ row.actor }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="empty-state">Bu hisob-raqamda hali tranzaksiyalar yo'q.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?{{ filter_query }}&page={{ page_obj.previous_page_number }}" class="page-btn">← Oldingi</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <span class="page-btn page-btn--active">{{ num }}</span>
+      {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+        <a href="?{{ filter_query }}&page={{ num }}" class="page-btn">{{ num }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <a href="?{{ filter_query }}&page={{ page_obj.next_page_number }}" class="page-btn">Keyingi →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<style>
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 12px;
+    justify-content: center;
+  }
+  .page-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: background 0.1s, color 0.1s;
+  }
+  .page-btn:hover { background: var(--border); color: var(--text); }
+  .page-btn--active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+    pointer-events: none;
+  }
+</style>
+{% endblock %}

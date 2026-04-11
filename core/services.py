@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from .models import AgentPayment, BalanceLog, FinancialAccount, Sale, SupplierPayment
+from .models import AgentPayment, BalanceLog, Expenditure, FinancialAccount, Sale, SupplierPayment
 
 
 @transaction.atomic
@@ -77,6 +77,28 @@ def unlink_sale_from_account(*, sale, user):
     sale.linked_by = None
     sale.linked_at = None
     sale.save(update_fields=["financial_account", "linked_by", "linked_at"])
+
+
+@transaction.atomic
+def record_expenditure(*, amount, currency, financial_account, date, description, user):
+    account = FinancialAccount.objects.select_for_update().get(pk=financial_account.pk)
+    expenditure = Expenditure.objects.create(
+        amount=amount,
+        currency=currency,
+        financial_account=account,
+        date=date,
+        description=description,
+        registered_by=user,
+    )
+    account.balance -= amount
+    account.save(update_fields=["balance"])
+    BalanceLog.objects.create(
+        account=account,
+        change=-amount,
+        reason=BalanceLog.EXPENDITURE,
+        actor=user,
+    )
+    return expenditure
 
 
 @transaction.atomic
