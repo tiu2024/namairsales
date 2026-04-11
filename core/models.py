@@ -18,6 +18,7 @@ class FinancialAccount(models.Model):
     account_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
     balance = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.name} ({self.currency})"
@@ -217,6 +218,7 @@ class Expenditure(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.date} — {self.description} — {self.amount} {self.currency}"

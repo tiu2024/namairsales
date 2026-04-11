@@ -102,6 +102,39 @@ def record_expenditure(*, amount, currency, financial_account, date, description
 
 
 @transaction.atomic
+def reverse_expenditure(*, expenditure, user):
+    account = FinancialAccount.objects.select_for_update().get(pk=expenditure.financial_account_id)
+    account.balance += expenditure.amount
+    account.save(update_fields=["balance"])
+    BalanceLog.objects.create(
+        account=account,
+        change=expenditure.amount,
+        reason=BalanceLog.REVERSAL,
+        actor=user,
+    )
+
+
+@transaction.atomic
+def edit_expenditure(*, expenditure, amount, currency, financial_account, date, description, user):
+    reverse_expenditure(expenditure=expenditure, user=user)
+    new_account = FinancialAccount.objects.select_for_update().get(pk=financial_account.pk)
+    expenditure.amount = amount
+    expenditure.currency = currency
+    expenditure.financial_account = new_account
+    expenditure.date = date
+    expenditure.description = description
+    expenditure.save(update_fields=["amount", "currency", "financial_account", "date", "description"])
+    new_account.balance -= amount
+    new_account.save(update_fields=["balance"])
+    BalanceLog.objects.create(
+        account=new_account,
+        change=-amount,
+        reason=BalanceLog.EXPENDITURE,
+        actor=user,
+    )
+
+
+@transaction.atomic
 def record_agent_payment(*, agent, amount, currency, financial_account, date, note, user):
     account = FinancialAccount.objects.select_for_update().get(pk=financial_account.pk)
     payment = AgentPayment.objects.create(

@@ -1,0 +1,106 @@
+{% extends "core/base.html" %}
+
+{% block title %}Sotuvchilar — NamAirSales{% endblock %}
+
+{% block content %}
+<div x-data="{ open: {{ open|yesno:'true,false' }} }">
+
+  <div class="page-header">
+    <h1>Sotuvchilar</h1>
+    <button class="btn btn-primary" @click="open = !open">+ Yangi</button>
+  </div>
+
+  <!-- Create form -->
+  <div x-show="open" x-transition.opacity.duration.150ms style="display:none; margin-bottom:20px;">
+    <div class="form-card">
+      <div class="form-card-header">
+        <h2>Yangi sotuvchi</h2>
+        <button type="button" class="btn btn-secondary" @click="open = false">× Bekor</button>
+      </div>
+      <form method="post" action="{% url 'core:salesman_list' %}">
+        {% csrf_token %}
+        <div class="form-grid">
+
+          <div class="field {% if form.first_name.errors %}field--error{% endif %}">
+            <label for="{{ form.first_name.id_for_label }}">Ism</label>
+            {{ form.first_name }}
+            {% for e in form.first_name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.last_name.errors %}field--error{% endif %}">
+            <label for="{{ form.last_name.id_for_label }}">Familiya</label>
+            {{ form.last_name }}
+            {% for e in form.last_name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.phone_number.errors %}field--error{% endif %}">
+            <label for="{{ form.phone_number.id_for_label }}">Telefon raqami</label>
+            {{ form.phone_number }}
+            {% for e in form.phone_number.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.password.errors %}field--error{% endif %}">
+            <label for="{{ form.password.id_for_label }}">Parol</label>
+            {{ form.password }}
+            {% for e in form.password.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Saqlash</button>
+          <button type="button" class="btn btn-secondary" @click="open = false">Bekor qilish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Salesmen table -->
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Ism</th>
+          <th>Telefon</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in salesmen %}
+        <tr x-data="{ deleteOpen: false }">
+          <td>{{ s.get_full_name|default:"—" }}</td>
+          <td style="color:var(--text-muted);" class="mono">{{ s.phone_number }}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <a href="{% url 'core:salesman_edit' s.pk %}" class="btn btn-secondary" style="font-size:12px; padding:4px 10px;">Tahrirlash</a>
+            <button class="btn btn-danger" style="font-size:12px; padding:4px 10px;" @click="deleteOpen = true">O'chirish</button>
+          </td>
+
+          <!-- Deactivate confirmation modal -->
+          <div x-show="deleteOpen" x-transition.opacity.duration.150ms style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:100;">
+            <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+              <div class="form-card" style="max-width:400px; width:100%;">
+                <h2 style="margin-bottom:12px;">O'chirishni tasdiqlang</h2>
+                <p style="margin-bottom:20px; color:var(--text-muted);">
+                  <strong>{{ s.get_full_name|default:s.phone_number }}</strong> o'chiriladi va tizimga kira olmaydi. Bu amalni qaytarib bo'lmaydi.
+                </p>
+                <div style="display:flex; gap:8px;">
+                  <form method="post" action="{% url 'core:salesman_deactivate' s.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+                  </form>
+                  <button type="button" class="btn btn-secondary" @click="deleteOpen = false">Bekor qilish</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="empty-state">Sotuvchilar topilmadi.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

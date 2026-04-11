@@ -1,0 +1,60 @@
+{% extends "core/base.html" %}
+
+{% block title %}Agentni tahrirlash — NamAirSales{% endblock %}
+
+{% block content %}
+
+  <div style="margin-bottom:16px;">
+    <a href="{% url 'core:agent_detail' agent.pk %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← {{ agent.name }}</a>
+  </div>
+
+  <div class="page-header">
+    <h1>Agentni tahrirlash</h1>
+  </div>
+
+  <div class="form-card">
+    <form method="post" action="{% url 'core:agent_edit' agent.pk %}">
+      {% csrf_token %}
+      <div class="form-grid">
+
+        <div class="field {% if form.name.errors %}field--error{% endif %}">
+          <label for="{{ form.name.id_for_label }}">Ism</label>
+          {{ form.name }}
+          {% for e in form.name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.phone.errors %}field--error{% endif %}">
+          <label for="{{ form.phone.id_for_label }}">Telefon</label>
+          {{ form.phone }}
+          {% for e in form.phone.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.initial_balance_uzs.errors %}field--error{% endif %}">
+          <label for="{{ form.initial_balance_uzs.id_for_label }}">Boshlang'ich balans (so'm)</label>
+          {{ form.initial_balance_uzs }}
+          {% for e in form.initial_balance_uzs.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.initial_balance_usd.errors %}field--error{% endif %}">
+          <label for="{{ form.initial_balance_usd.id_for_label }}">Boshlang'ich balans (USD)</label>
+          {{ form.initial_balance_usd }}
+          {% for e in form.initial_balance_usd.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field full-width {% if form.note.errors %}field--error{% endif %}">
+          <label for="{{ form.note.id_for_label }}">Izoh (ixtiyoriy)</label>
+          {{ form.note }}
+          {% for e in form.note.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Saqlash</button>
+        <a href="{% url 'core:agent_detail' agent.pk %}" class="btn btn-secondary">Bekor qilish</a>
+      </div>
+
+    </form>
+  </div>
+
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "core/base.html" %}
+
+{% block title %}Xarajatni tahrirlash — NamAirSales{% endblock %}
+
+{% block content %}
+
+  <div style="margin-bottom:16px;">
+    <a href="{% url 'core:expenditure_list' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Xarajatlar</a>
+  </div>
+
+  <div class="page-header">
+    <h1>Xarajatni tahrirlash</h1>
+  </div>
+
+  <div class="form-card">
+    <form method="post" action="{% url 'core:expenditure_edit' expenditure.pk %}">
+      {% csrf_token %}
+      <div class="form-grid">
+
+        <div class="field full-width {% if form.description.errors %}field--error{% endif %}">
+          <label for="{{ form.description.id_for_label }}">Izoh</label>
+          {{ form.description }}
+          {% for e in form.description.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.amount.errors %}field--error{% endif %}">
+          <label for="{{ form.amount.id_for_label }}">Summa</label>
+          {{ form.amount }}
+          {% for e in form.amount.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.currency.errors %}field--error{% endif %}">
+          <label for="{{ form.currency.id_for_label }}">Valyuta</label>
+          {{ form.currency }}
+          {% for e in form.currency.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.financial_account.errors %}field--error{% endif %}">
+          <label for="{{ form.financial_account.id_for_label }}">Hisob</label>
+          {{ form.financial_account }}
+          {% for e in form.financial_account.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.date.errors %}field--error{% endif %}">
+          <label for="{{ form.date.id_for_label }}">Sana</label>
+          {{ form.date }}
+          {% for e in form.date.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Saqlash</button>
+        <a href="{% url 'core:expenditure_list' %}" class="btn btn-secondary">Bekor qilish</a>
+      </div>
+
+    </form>
+  </div>
+
+{% endblock %}

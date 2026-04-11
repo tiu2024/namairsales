@@ -6,12 +6,13 @@ from django.db import transaction
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
-from accounts.decorators import accountant_required
+from accounts.decorators import accountant_required, admin_required
+from accounts.forms import SalesmanCreateForm, SalesmanEditForm
 from accounts.models import CustomUser
 
-from .forms import AgentForm, AgentPaymentForm, ExpenditureForm, SaleForm, SupplierForm, SupplierPaymentForm
+from .forms import AgentForm, AgentPaymentForm, ExpenditureForm, FinancialAccountForm, SaleForm, SupplierForm, SupplierPaymentForm
 from .models import USD, UZS, Agent, AgentPayment, Expenditure, FinancialAccount, Sale, Supplier, SupplierPayment
-from .services import link_sale_to_account, record_agent_payment, record_expenditure, record_supplier_payment, unlink_sale_from_account
+from .services import edit_expenditure, link_sale_to_account, record_agent_payment, record_expenditure, record_supplier_payment, reverse_expenditure, unlink_sale_from_account
 
 
 def index(request):
@@ -211,8 +212,8 @@ def accountant_sales(request):
         "filter_salesman_id": salesman_id,
         "all_agents": Agent.objects.order_by("name"),
         "all_suppliers": Supplier.objects.order_by("name"),
-        "all_salesmen": CustomUser.objects.order_by("phone_number"),
-        "all_accounts": FinancialAccount.objects.order_by("name"),
+        "all_salesmen": CustomUser.objects.filter(role="SALESMAN", is_active=True).order_by("phone_number"),
+        "all_accounts": FinancialAccount.objects.filter(is_active=True).order_by("name"),
         "filter_query": filter_query,
     })
 
@@ -242,7 +243,7 @@ def sale_link_account(request, pk):
     sale = Sale.objects.select_related("supplier", "agent", "salesman", "financial_account").get(pk=sale.pk)
     return render(request, "core/partials/accountant_sale_row.html", {
         "sale": sale,
-        "all_accounts": FinancialAccount.objects.order_by("name"),
+        "all_accounts": FinancialAccount.objects.filter(is_active=True).order_by("name"),
     })
 
 
@@ -553,6 +554,50 @@ def agent_detail(request, pk):
 
 
 @accountant_required
+def agent_edit(request, pk):
+    agent = get_object_or_404(Agent, pk=pk)
+    if request.method == "POST":
+        form = AgentForm(request.POST, instance=agent)
+        if form.is_valid():
+            form.save()
+            return redirect("core:agent_detail", pk=pk)
+    else:
+        form = AgentForm(instance=agent)
+    return render(request, "core/agent_edit.html", {"form": form, "agent": agent})
+
+
+@admin_required
+def agent_delete(request, pk):
+    agent = get_object_or_404(Agent, pk=pk)
+    if request.method == "POST":
+        agent.delete()
+        return redirect("core:agent_list")
+    return render(request, "core/agent_confirm_delete.html", {"object": agent})
+
+
+@accountant_required
+def supplier_edit(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    if request.method == "POST":
+        form = SupplierForm(request.POST, instance=supplier)
+        if form.is_valid():
+            form.save()
+            return redirect("core:supplier_detail", pk=pk)
+    else:
+        form = SupplierForm(instance=supplier)
+    return render(request, "core/supplier_edit.html", {"form": form, "supplier": supplier})
+
+
+@admin_required
+def supplier_delete(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    if request.method == "POST":
+        supplier.delete()
+        return redirect("core:supplier_list")
+    return render(request, "core/supplier_confirm_delete.html", {"object": supplier})
+
+
+@accountant_required
 def expenditure_list(request):
     form = ExpenditureForm()
     form_open = False
@@ -573,7 +618,7 @@ def expenditure_list(request):
         form_open = True
 
     expenditures = (
-        Expenditure.objects.all()
+        Expenditure.objects.filter(is_active=True)
         .select_related("financial_account", "registered_by")
         .order_by("-date", "-created_at")
     )
@@ -584,14 +629,62 @@ def expenditure_list(request):
     })
 
 
+@login_required
+def expenditure_edit(request, pk):
+    expenditure = get_object_or_404(Expenditure, pk=pk, is_active=True)
+    if request.method == "POST":
+        form = ExpenditureForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            edit_expenditure(
+                expenditure=expenditure,
+                amount=cd["amount"],
+                currency=cd["currency"],
+                financial_account=cd["financial_account"],
+                date=cd["date"],
+                description=cd["description"],
+                user=request.user,
+            )
+            return redirect("core:expenditure_list")
+    else:
+        form = ExpenditureForm(initial={
+            "amount": expenditure.amount,
+            "currency": expenditure.currency,
+            "financial_account": expenditure.financial_account,
+            "date": expenditure.date.strftime("%d.%m.%Y"),
+            "description": expenditure.description,
+        })
+    return render(request, "core/expenditure_edit.html", {"form": form, "expenditure": expenditure})
+
+
+@login_required
+def expenditure_archive(request, pk):
+    expenditure = get_object_or_404(Expenditure, pk=pk, is_active=True)
+    if request.method == "POST":
+        reverse_expenditure(expenditure=expenditure, user=request.user)
+        expenditure.is_active = False
+        expenditure.save(update_fields=["is_active"])
+        return redirect("core:expenditure_list")
+
+
 @accountant_required
 def financial_account_list(request):
+    if request.method == "POST":
+        form = FinancialAccountForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("core:financial_account_list")
+    else:
+        form = FinancialAccountForm()
+
     q = request.GET.get("q", "").strip()
-    accounts = FinancialAccount.objects.order_by("name")
+    accounts = FinancialAccount.objects.filter(is_active=True).order_by("name")
     if q:
         accounts = accounts.filter(name__icontains=q)
     return render(request, "core/financial_account_list.html", {
         "accounts": accounts,
+        "form": form,
+        "open": request.method == "POST" and not form.is_valid(),
         "q": q,
     })
 
@@ -698,3 +791,65 @@ def financial_account_detail(request, pk):
         "date_to_str": date_to_str,
         "filter_query": filter_query,
     })
+
+
+@accountant_required
+def financial_account_edit(request, pk):
+    account = get_object_or_404(FinancialAccount, pk=pk)
+    if request.method == "POST":
+        form = FinancialAccountForm(request.POST, instance=account)
+        if form.is_valid():
+            form.save()
+            return redirect("core:financial_account_detail", pk=pk)
+    else:
+        form = FinancialAccountForm(instance=account)
+    return render(request, "core/financial_account_edit.html", {"form": form, "account": account})
+
+
+@admin_required
+def financial_account_archive(request, pk):
+    account = get_object_or_404(FinancialAccount, pk=pk)
+    if request.method == "POST":
+        account.is_active = False
+        account.save(update_fields=["is_active"])
+        return redirect("core:financial_account_list")
+
+
+@admin_required
+def salesman_list(request):
+    if request.method == "POST":
+        form = SalesmanCreateForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("core:salesman_list")
+    else:
+        form = SalesmanCreateForm()
+
+    salesmen = CustomUser.objects.filter(role="SALESMAN", is_active=True).order_by("first_name", "last_name")
+    return render(request, "core/salesman_list.html", {
+        "salesmen": salesmen,
+        "form": form,
+        "open": request.method == "POST" and not form.is_valid(),
+    })
+
+
+@admin_required
+def salesman_edit(request, pk):
+    salesman = get_object_or_404(CustomUser, pk=pk, role="SALESMAN")
+    if request.method == "POST":
+        form = SalesmanEditForm(request.POST, instance=salesman)
+        if form.is_valid():
+            form.save()
+            return redirect("core:salesman_list")
+    else:
+        form = SalesmanEditForm(instance=salesman)
+    return render(request, "core/salesman_edit.html", {"form": form, "salesman": salesman})
+
+
+@admin_required
+def salesman_deactivate(request, pk):
+    salesman = get_object_or_404(CustomUser, pk=pk, role="SALESMAN")
+    if request.method == "POST":
+        salesman.is_active = False
+        salesman.save(update_fields=["is_active"])
+        return redirect("core:salesman_list")

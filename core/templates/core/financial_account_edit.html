@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+
+{% block title %}Hisob-raqamni tahrirlash — NamAirSales{% endblock %}
+
+{% block content %}
+
+  <div style="margin-bottom:16px;">
+    <a href="{% url 'core:financial_account_detail' account.pk %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← {{ account.name }}</a>
+  </div>
+
+  <div class="page-header">
+    <h1>Hisob-raqamni tahrirlash</h1>
+  </div>
+
+  <div class="form-card">
+    <form method="post" action="{% url 'core:financial_account_edit' account.pk %}">
+      {% csrf_token %}
+      <div class="form-grid">
+
+        <div class="field {% if form.name.errors %}field--error{% endif %}">
+          <label for="{{ form.name.id_for_label }}">Nomi</label>
+          {{ form.name }}
+          {% for e in form.name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.account_type.errors %}field--error{% endif %}">
+          <label for="{{ form.account_type.id_for_label }}">Turi</label>
+          {{ form.account_type }}
+          {% for e in form.account_type.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.currency.errors %}field--error{% endif %}">
+          <label for="{{ form.currency.id_for_label }}">Valyuta</label>
+          {{ form.currency }}
+          {% for e in form.currency.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Saqlash</button>
+        <a href="{% url 'core:financial_account_detail' account.pk %}" class="btn btn-secondary">Bekor qilish</a>
+      </div>
+
+    </form>
+  </div>
+
+{% endblock %}

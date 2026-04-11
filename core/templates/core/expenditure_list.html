@@ -71,11 +71,12 @@
           <th>Hisob</th>
           <th style="text-align:right;">Summa</th>
           <th>Qo'shdi</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for exp in expenditures %}
-        <tr>
+        <tr x-data="{ archiveOpen: false }">
           <td class="mono" style="white-space:nowrap;">{{ exp.date|date:"d.m.Y" }}</td>
           <td>{{ exp.description }}</td>
           <td style="color:var(--text-muted);">{{ exp.financial_account.name }}</td>
@@ -83,10 +84,33 @@
             {% if exp.currency == 'UZS' %}{{ exp.amount|uzs }}{% else %}{{ exp.amount|usd }}{% endif %}
           </td>
           <td style="color:var(--text-muted); font-size:12px;">{{ exp.registered_by.get_full_name|default:exp.registered_by.phone_number }}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <a href="{% url 'core:expenditure_edit' exp.pk %}" class="btn btn-secondary" style="font-size:12px; padding:4px 10px;">Tahrirlash</a>
+            <button class="btn btn-danger" style="font-size:12px; padding:4px 10px;" @click="archiveOpen = true">O'chirish</button>
+          </td>
+
+          <!-- Archive confirmation modal -->
+          <div x-show="archiveOpen" x-transition.opacity.duration.150ms style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:100;">
+            <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+              <div class="form-card" style="max-width:400px; width:100%;">
+                <h2 style="margin-bottom:12px;">O'chirishni tasdiqlang</h2>
+                <p style="margin-bottom:20px; color:var(--text-muted);">
+                  <strong>{{ exp.description }}</strong> xarajati o'chiriladi va balans qayta tiklanadi. Bu amalni qaytarib bo'lmaydi.
+                </p>
+                <div style="display:flex; gap:8px;">
+                  <form method="post" action="{% url 'core:expenditure_archive' exp.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+                  </form>
+                  <button type="button" class="btn btn-secondary" @click="archiveOpen = false">Bekor qilish</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="5" class="empty-state">Hozircha xarajatlar yo'q.</td>
+          <td colspan="6" class="empty-state">Hozircha xarajatlar yo'q.</td>
         </tr>
         {% endfor %}
       </tbody>

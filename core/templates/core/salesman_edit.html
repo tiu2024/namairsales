@@ -1,0 +1,54 @@
+{% extends "core/base.html" %}
+
+{% block title %}Sotuvchini tahrirlash — NamAirSales{% endblock %}
+
+{% block content %}
+
+  <div style="margin-bottom:16px;">
+    <a href="{% url 'core:salesman_list' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Sotuvchilar</a>
+  </div>
+
+  <div class="page-header">
+    <h1>Sotuvchini tahrirlash</h1>
+  </div>
+
+  <div class="form-card">
+    <form method="post" action="{% url 'core:salesman_edit' salesman.pk %}">
+      {% csrf_token %}
+      <div class="form-grid">
+
+        <div class="field {% if form.first_name.errors %}field--error{% endif %}">
+          <label for="{{ form.first_name.id_for_label }}">Ism</label>
+          {{ form.first_name }}
+          {% for e in form.first_name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.last_name.errors %}field--error{% endif %}">
+          <label for="{{ form.last_name.id_for_label }}">Familiya</label>
+          {{ form.last_name }}
+          {% for e in form.last_name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.phone_number.errors %}field--error{% endif %}">
+          <label for="{{ form.phone_number.id_for_label }}">Telefon raqami</label>
+          {{ form.phone_number }}
+          {% for e in form.phone_number.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field {% if form.password.errors %}field--error{% endif %}">
+          <label for="{{ form.password.id_for_label }}">Yangi parol (ixtiyoriy)</label>
+          {{ form.password }}
+          {% for e in form.password.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Saqlash</button>
+        <a href="{% url 'core:salesman_list' %}" class="btn btn-secondary">Bekor qilish</a>
+      </div>
+
+    </form>
+  </div>
+
+{% endblock %}

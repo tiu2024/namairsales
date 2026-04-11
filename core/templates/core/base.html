@@ -165,6 +165,12 @@
     }
     .btn-secondary:hover { background: var(--border); }
 
+    .btn-danger {
+      background: #DC2626;
+      color: #fff;
+    }
+    .btn-danger:hover { background: #b91c1c; }
+
     /* ── Form card ── */
     .form-card {
       background: var(--surface);
@@ -493,12 +499,15 @@
   <header class="topnav">
     <div class="topnav-logo">NamAirSales</div>
     <nav class="topnav-nav">
-      {% if request.user.role == 'ACCOUNTANT' %}
+      {% if request.user.role == 'ACCOUNTANT' or request.user.is_superuser %}
       <a href="{% url 'core:accountant_sales' %}" {% if request.resolver_match.url_name == 'accountant_sales' %}class="active"{% endif %}>Barcha sotuvlar</a>
       <a href="{% url 'core:expenditure_list' %}" {% if 'xarajatlar' in request.path %}class="active"{% endif %}>Xarajatlar</a>
       <a href="{% url 'core:financial_account_list' %}" {% if 'hisob-raqamlar' in request.path %}class="active"{% endif %}>Hisob-raqamlar</a>
       <a href="{% url 'core:supplier_list' %}" {% if 'yetkazib-beruvchilar' in request.path %}class="active"{% endif %}>Yetkazib beruvchilar</a>
       <a href="{% url 'core:agent_list' %}" {% if 'agentlar' in request.path %}class="active"{% endif %}>Agentlar</a>
+      {% if request.user.is_superuser %}
+      <a href="{% url 'core:salesman_list' %}" {% if 'sotuvchilar' in request.path %}class="active"{% endif %}>Sotuvchilar</a>
+      {% endif %}
       {% else %}
       <a href="{% url 'core:salesman_sales' %}" {% if request.resolver_match.url_name == 'salesman_sales' %}class="active"{% endif %}>Sotuvlarim</a>
       {% endif %}

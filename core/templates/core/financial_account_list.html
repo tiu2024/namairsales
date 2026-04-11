@@ -4,9 +4,48 @@
 {% block title %}Hisob-raqamlar — NamAirSales{% endblock %}
 
 {% block content %}
+<div x-data="{ open: {{ open|yesno:'true,false' }} }">
 
   <div class="page-header">
     <h1>Hisob-raqamlar</h1>
+    <button class="btn btn-primary" @click="open = !open">+ Yangi</button>
+  </div>
+
+  <!-- Create form -->
+  <div x-show="open" x-transition.opacity.duration.150ms style="display:none; margin-bottom:20px;">
+    <div class="form-card">
+      <div class="form-card-header">
+        <h2>Yangi hisob-raqam</h2>
+        <button type="button" class="btn btn-secondary" @click="open = false">× Bekor</button>
+      </div>
+      <form method="post" action="{% url 'core:financial_account_list' %}">
+        {% csrf_token %}
+        <div class="form-grid">
+
+          <div class="field {% if form.name.errors %}field--error{% endif %}">
+            <label for="{{ form.name.id_for_label }}">Nomi</label>
+            {{ form.name }}
+            {% for e in form.name.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.account_type.errors %}field--error{% endif %}">
+            <label for="{{ form.account_type.id_for_label }}">Turi</label>
+            {{ form.account_type }}
+            {% for e in form.account_type.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+          <div class="field {% if form.currency.errors %}field--error{% endif %}">
+            <label for="{{ form.currency.id_for_label }}">Valyuta</label>
+            {{ form.currency }}
+            {% for e in form.currency.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          </div>
+
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Saqlash</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Search -->
@@ -59,4 +98,5 @@
     </table>
   </div>
 
+</div>
 {% endblock %}

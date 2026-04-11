@@ -4,6 +4,7 @@
 {% block title %}{{ account.name }} — NamAirSales{% endblock %}
 
 {% block content %}
+<div x-data="{ archiveOpen: false }">
 
   <div style="margin-bottom:16px;">
     <a href="{% url 'core:financial_account_list' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Hisob-raqamlar</a>
@@ -16,7 +17,35 @@
         {{ account.get_account_type_display }} · {{ account.get_currency_display }}
       </p>
     </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      {% if request.user.role == 'ACCOUNTANT' or request.user.is_superuser %}
+        <a href="{% url 'core:financial_account_edit' account.pk %}" class="btn btn-secondary">Tahrirlash</a>
+      {% endif %}
+      {% if request.user.is_superuser %}
+        <button class="btn btn-danger" @click="archiveOpen = true">Arxivlash</button>
+      {% endif %}
+    </div>
   </div>
+
+  {% if request.user.is_superuser %}
+  <div x-show="archiveOpen" x-transition.opacity.duration.150ms style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:100;">
+    <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div class="form-card" style="max-width:400px; width:100%;">
+      <h2 style="margin-bottom:12px;">Arxivlashni tasdiqlang</h2>
+      <p style="margin-bottom:20px; color:var(--text-muted);">
+        <strong>{{ account.name }}</strong> arxivlanadi va yangi operatsiyalar uchun ko'rinmaydi. Ma'lumotlar saqlanib qoladi.
+      </p>
+      <div style="display:flex; gap:8px;">
+        <form method="post" action="{% url 'core:financial_account_archive' account.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Ha, arxivlash</button>
+        </form>
+        <button type="button" class="btn btn-secondary" @click="archiveOpen = false">Bekor qilish</button>
+      </div>
+    </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Balance summary card -->
   <div class="summary-card" style="margin-bottom:20px;">
@@ -108,6 +137,8 @@
 {% endblock %}
 
 {% block extra_js %}
+</div><!-- /x-data -->
+
 <style>
   .pagination {
     display: flex;

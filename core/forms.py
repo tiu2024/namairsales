@@ -2,7 +2,7 @@ from datetime import date
 
 from django import forms
 
-from .models import Agent, AgentPayment, Expenditure, Sale, Supplier, SupplierPayment
+from .models import Agent, AgentPayment, Expenditure, FinancialAccount, Sale, Supplier, SupplierPayment
 
 
 class SaleForm(forms.ModelForm):
@@ -81,6 +81,10 @@ class AgentPaymentForm(forms.ModelForm):
             "note": forms.Textarea(attrs={"rows": 2}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["financial_account"].queryset = FinancialAccount.objects.filter(is_active=True)
+
     def clean(self):
         cleaned = super().clean()
         currency = cleaned.get("currency")
@@ -107,6 +111,10 @@ class ExpenditureForm(forms.ModelForm):
             "amount": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
             "description": forms.TextInput(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["financial_account"].queryset = FinancialAccount.objects.filter(is_active=True)
 
     def clean(self):
         cleaned = super().clean()
@@ -146,6 +154,10 @@ class SupplierPaymentForm(forms.ModelForm):
             "note": forms.Textarea(attrs={"rows": 2}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["financial_account"].queryset = FinancialAccount.objects.filter(is_active=True)
+
     def clean(self):
         cleaned = super().clean()
         currency = cleaned.get("currency")
@@ -156,3 +168,9 @@ class SupplierPaymentForm(forms.ModelForm):
                 "Hisob valyutasi to'lov valyutasiga mos kelishi kerak.",
             )
         return cleaned
+
+
+class FinancialAccountForm(forms.ModelForm):
+    class Meta:
+        model = FinancialAccount
+        fields = ["name", "account_type", "currency"]

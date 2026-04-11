@@ -4,7 +4,7 @@
 {% block title %}{{ supplier.name }} — NamAirSales{% endblock %}
 
 {% block content %}
-<div x-data="{ payOpen: {{ payment_open|yesno:'true,false' }} }">
+<div x-data="{ payOpen: {{ payment_open|yesno:'true,false' }}, deleteOpen: false }">
 
   <div style="margin-bottom:16px;">
     <a href="{% url 'core:supplier_list' %}" style="font-size:13px; color:var(--text-muted); text-decoration:none;">← Yetkazib beruvchilar</a>
@@ -21,8 +21,36 @@
       </p>
       {% endif %}
     </div>
-    <button class="btn btn-primary" @click="payOpen = !payOpen">+ To'lov qilish</button>
+    <div style="display:flex; gap:8px; align-items:center;">
+      {% if request.user.role == 'ACCOUNTANT' or request.user.is_superuser %}
+        <a href="{% url 'core:supplier_edit' supplier.pk %}" class="btn btn-secondary">Tahrirlash</a>
+      {% endif %}
+      {% if request.user.is_superuser %}
+        <button class="btn btn-danger" @click="deleteOpen = true">O'chirish</button>
+      {% endif %}
+      <button class="btn btn-primary" @click="payOpen = !payOpen">+ To'lov qilish</button>
+    </div>
   </div>
+
+  {% if request.user.is_superuser %}
+  <div x-show="deleteOpen" x-transition.opacity.duration.150ms style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:100;">
+    <div style="display:flex; align-items:center; justify-content:center; height:100%;">
+    <div class="form-card" style="max-width:400px; width:100%;">
+      <h2 style="margin-bottom:12px;">Yetkazib beruvchini o'chirishni tasdiqlang</h2>
+      <p style="margin-bottom:20px; color:var(--text-muted);">
+        <strong>{{ supplier.name }}</strong> barcha to'lovlar tarixi bilan birga o'chiriladi. Bu amalni qaytarib bo'lmaydi.
+      </p>
+      <div style="display:flex; gap:8px;">
+        <form method="post" action="{% url 'core:supplier_delete' supplier.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+        </form>
+        <button type="button" class="btn btn-secondary" @click="deleteOpen = false">Bekor qilish</button>
+      </div>
+    </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Payment form -->
   <div x-show="payOpen" x-transition.opacity.duration.150ms style="display:none; margin-bottom:20px;">
